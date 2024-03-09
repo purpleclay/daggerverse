@@ -26,6 +26,7 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"strings"
 )
 
 const (
@@ -139,5 +140,60 @@ func (g *Golang) Build(
 		WithDirectory("/src", g.Src).
 		WithWorkdir("/src").
 		WithExec(cmd).
+		Directory("/src")
+}
+
+// Execute any tests defined within the current project, ignores benchmarks by default
+func (g *Golang) Test(
+	ctx context.Context,
+	// if only short running tests should be executed
+	// +optional
+	// +default=true
+	short bool,
+	// if the tests should be executed out of order
+	// +optional
+	// +default=true
+	shuffle bool,
+	// run select tests only, defined using a regex
+	// +optional
+	run string,
+	// skip select tests, defined using a regex
+	// +optional
+	skip string,
+	// log all output from tests even if there are successful
+	// +optional
+	verbose bool,
+) *Directory {
+	cmd := []string{"go", "test", "-vet=off", "-covermode=atomic", "-coverprofile=coverage.out", "-json", "./..."}
+	if short {
+		cmd = append(cmd, "-short")
+	}
+
+	if shuffle {
+		cmd = append(cmd, "-shuffle=on")
+	}
+
+	if run != "" {
+		cmd = append(cmd, []string{"-run", run}...)
+	}
+
+	if skip != "" {
+		cmd = append(cmd, []string{"-skip", skip}...)
+	}
+
+	if verbose {
+		cmd = append(cmd, "-v")
+	}
+
+	// Capture JSON report and pipe it into tparse
+	cmd = append(cmd, []string{"|", "tee", "test-report.json", "|", "tparse", "-follow"}...)
+
+	return g.Base.
+		WithDirectory("/src", g.Src).
+		WithWorkdir("/src").
+		WithExec([]string{"go", "install", "github.com/mfridman/tparse@latest"}).
+		WithExec([]string{"go", "install", "gotest.tools/gotestsum@latest"}).
+		WithExec([]string{"sh", "-c", strings.Join(cmd, " ")}).
+		WithExec([]string{"gotestsum", "--junitfile", "junit-report.xml", "--raw-command", "cat", "test-report.json"}).
 		Directory("/src")
 }
