@@ -143,9 +143,8 @@ func (g *Golang) Build(
 		Directory("/src")
 }
 
-// Execute any tests defined within the current project, ignores benchmarks by default
+// Execute tests defined within the target project, ignores benchmarks by default
 func (g *Golang) Test(
-	ctx context.Context,
 	// if only short running tests should be executed
 	// +optional
 	// +default=true
@@ -195,5 +194,29 @@ func (g *Golang) Test(
 		WithExec([]string{"go", "install", "gotest.tools/gotestsum@latest"}).
 		WithExec([]string{"sh", "-c", strings.Join(cmd, " ")}).
 		WithExec([]string{"gotestsum", "--junitfile", "junit-report.xml", "--raw-command", "cat", "test-report.json"}).
+		Directory("/src")
+}
+
+// Execute benchmarks defined within the target project, excludes all other tests
+func (g *Golang) Bench(
+	// print memory allocation statistics for benchmarks
+	// +optional
+	// +default=true
+	memory bool,
+	// the time.Duration each benchmark should run for
+	// +optional
+	// +default="5s"
+	time string) *Directory {
+	cmd := []string{"go", "test", "-bench=.", "-benchtime", time, "-run=^#", "./..."}
+	if memory {
+		cmd = append(cmd, "-benchmem")
+	}
+
+	cmd = append(cmd, []string{"|", "tee", "bench.out"}...)
+
+	return g.Base.
+		WithDirectory("/src", g.Src).
+		WithWorkdir("/src").
+		WithExec([]string{"sh", "-c", strings.Join(cmd, " ")}).
 		Directory("/src")
 }
