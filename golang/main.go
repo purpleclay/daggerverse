@@ -67,7 +67,7 @@ func New(
 	return g
 }
 
-// Echoes the version of go used by a given project
+// Echoes the version of go used by a target project
 func (g *Golang) ModVersion(ctx context.Context) (string, error) {
 	return dag.Container().
 		From("busybox").
@@ -217,6 +217,18 @@ func (g *Golang) Bench(
 	return g.Base.
 		WithDirectory("/src", g.Src).
 		WithWorkdir("/src").
+		WithExec([]string{"sh", "-c", strings.Join(cmd, " ")}).
+		Directory("/src")
+}
+
+// Scans the target project for vulnerabilities using govulncheck
+func (g *Golang) Vulncheck() *Directory {
+	cmd := []string{"govulncheck", "./...", "|", "tee", "vulncheck.out"}
+
+	return g.Base.
+		WithDirectory("/src", g.Src).
+		WithWorkdir("/src").
+		WithExec([]string{"go", "install", "golang.org/x/vuln/cmd/govulncheck@latest"}).
 		WithExec([]string{"sh", "-c", strings.Join(cmd, " ")}).
 		Directory("/src")
 }
