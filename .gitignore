@@ -5,6 +5,8 @@
 !.gitignore
 !README.md
 !LICENSE
+!CODE_OF_CONDUCT.md
+!.github/**/*
 
 # Allow Go files (explicitly ignore Dagger files)
 !*.go
