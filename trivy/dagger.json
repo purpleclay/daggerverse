@@ -1,0 +1,12 @@
+{
+  "name": "trivy",
+  "sdk": "go",
+  "dependencies": [
+    {
+      "name": "wolfi",
+      "source": "github.com/shykes/daggerverse/wolfi@3d608cb5e6b4b18036a471400bc4e6c753f229d7"
+    }
+  ],
+  "source": ".",
+  "engineVersion": "v0.10.1"
+}
