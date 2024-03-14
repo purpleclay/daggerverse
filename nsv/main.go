@@ -24,7 +24,6 @@ package main
 
 import (
 	"context"
-	"strings"
 )
 
 // NSV dagger module
@@ -59,7 +58,7 @@ func (n *Nsv) Next(
 	paths []string) (string, error) {
 	cmd := []string{"next"}
 	if len(paths) > 0 {
-		cmd = append(cmd, strings.Join(paths, " "))
+		cmd = append(cmd, paths...)
 	}
 
 	return n.Base.
