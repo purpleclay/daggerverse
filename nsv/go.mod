@@ -1,4 +1,4 @@
-module dagger/golang
+module dagger/nsv
 
 go 1.21.6
 
