@@ -1,6 +1,7 @@
 go 1.21.6
 
 use (
+	./docker
 	./golang
 	./nsv
 	./trivy
