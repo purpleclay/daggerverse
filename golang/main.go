@@ -1,25 +1,14 @@
-/*
-Copyright (c) 2024 Purple Clay
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-*/
-
+// A collection of functions for building, testing, linting and scanning your Go project
+// for vulnerabilities.
+//
+// To select a Go project, a path must be provided for the --src flag. The base image used
+// by all functions is automatically resolved from the project version defined within the go.mod
+// file. Auto-detection is supported for Go 1.17 and above:
+//
+// - >= 1.17 < 1.20: the Debian bullseye image is used.
+// - >= 1.20: the Debian bookworm image is used.
+//
+// Set the --image flag to switch to using your custom image.
 package main
 
 import (
@@ -32,13 +21,13 @@ import (
 const (
 	// Prior to go 1.21, the go.mod doesn't include the full version, so build
 	// against the latest possible version
-	go1_17 = "1.17.13-bullseye"
-	go1_18 = "1.18.10-bullseye"
-	go1_19 = "1.19.13-bullseye"
-	go1_20 = "1.20.13-bookworm"
+	go1_17 = "golang:1.17.13-bullseye"
+	go1_18 = "golang:1.18.10-bullseye"
+	go1_19 = "golang:1.19.13-bullseye"
+	go1_20 = "golang:1.20.13-bookworm"
 )
 
-// Golang dagger function
+// Golang dagger module
 type Golang struct {
 	// Base is the image used by all golang dagger functions, defaults to the bookworm base image
 	// +private
@@ -47,6 +36,10 @@ type Golang struct {
 	// Src is a directory that contains the projects source code
 	// +private
 	Src *Directory
+
+	// Version of the go project
+	// +private
+	Version string
 }
 
 // New initializes the golang dagger module
@@ -60,8 +53,8 @@ func New(
 	g := &Golang{Base: image, Src: src}
 	if g.Base == nil {
 		// Detect the version of Go and select the right base image
-		version, _ := g.ModVersion(context.Background())
-		g.Base = base(version)
+		g.Version, _ = g.ModVersion(context.Background())
+		g.Base = base(g.Version)
 	}
 
 	return g
@@ -231,4 +224,29 @@ func (g *Golang) Vulncheck() *Directory {
 		WithExec([]string{"go", "install", "golang.org/x/vuln/cmd/govulncheck@latest"}).
 		WithExec([]string{"sh", "-c", strings.Join(cmd, " ")}).
 		Directory("/src")
+}
+
+// Lint the target project using golangci-lint
+func (g *Golang) Lint(ctx context.Context) *File {
+	// Install using the recommended approach: https://golangci-lint.run/welcome/install/
+	installCmd := []string{
+		"curl",
+		"-sSfL",
+		"https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh",
+		"|",
+		"sh",
+		"-s",
+		"--",
+		"-b",
+		"$(go env GOPATH)/bin",
+	}
+
+	cmd := []string{"golangci-lint", "run", "--timeout", "5m", "--go", g.Version, "|", "tee", "lint.out"}
+
+	return g.Base.
+		WithDirectory("/src", g.Src).
+		WithWorkdir("/src").
+		WithExec([]string{"bash", "-c", strings.Join(installCmd, " ")}).
+		WithExec([]string{"bash", "-o", "pipefail", "-c", strings.Join(cmd, " ")}).
+		File("lint.out")
 }

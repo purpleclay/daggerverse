@@ -1,6 +1,6 @@
 module dagger/golang
 
-go 1.22.1
+go 1.21.7
 
 require (
 	github.com/99designs/gqlgen v0.17.31
