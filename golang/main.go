@@ -223,7 +223,12 @@ func (g *Golang) Vulncheck() *File {
 }
 
 // Lint the target project using golangci-lint
-func (g *Golang) Lint(ctx context.Context) *File {
+func (g *Golang) Lint(
+	ctx context.Context,
+	// the type of report that should be generated
+	// +optional
+	// +default="colored-line-number"
+	format string) *File {
 	// Install using the recommended approach: https://golangci-lint.run/welcome/install/
 	installCmd := []string{
 		"curl",
@@ -237,7 +242,19 @@ func (g *Golang) Lint(ctx context.Context) *File {
 		"$(go env GOPATH)/bin",
 	}
 
-	cmd := []string{"golangci-lint", "run", "--timeout", "5m", "--go", g.Version, "|", "tee", "lint.out"}
+	cmd := []string{
+		"golangci-lint",
+		"run",
+		"--timeout",
+		"5m",
+		"--go",
+		g.Version,
+		"--out-format",
+		format,
+		"|",
+		"tee",
+		"lint.out",
+	}
 
 	return g.Base.
 		WithDirectory("/src", g.Src).
