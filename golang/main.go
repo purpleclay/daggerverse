@@ -211,7 +211,7 @@ func (g *Golang) Bench(
 }
 
 // Scans the target project for vulnerabilities using govulncheck
-func (g *Golang) Vulncheck() *Directory {
+func (g *Golang) Vulncheck() *File {
 	cmd := []string{"govulncheck", "./...", "|", "tee", "vulncheck.out"}
 
 	return g.Base.
@@ -219,7 +219,7 @@ func (g *Golang) Vulncheck() *Directory {
 		WithWorkdir("/src").
 		WithExec([]string{"go", "install", "golang.org/x/vuln/cmd/govulncheck@latest"}).
 		WithExec([]string{"sh", "-c", strings.Join(cmd, " ")}).
-		Directory("/src")
+		File("vulncheck.out")
 }
 
 // Lint the target project using golangci-lint
