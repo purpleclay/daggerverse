@@ -14,8 +14,6 @@
 !go.mod
 !go.work
 !dagger.json
-dagger.gen.go
-*/internal/**
 
 # Recurse through sub-directories applying the same patterns
 !*/
