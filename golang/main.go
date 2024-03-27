@@ -1,14 +1,7 @@
-// A collection of functions for building, testing, linting and scanning your Go project
-// for vulnerabilities.
+// Build, test, lint and scan your Go project for vulnerabilities.
 //
-// To select a Go project, a path must be provided for the --src flag. The base image used
-// by all functions is automatically resolved from the project version defined within the go.mod
-// file. Auto-detection is supported for Go 1.17 and above:
-//
-// - >= 1.17 < 1.20: the Debian bullseye image is used.
-// - >= 1.20: the Debian bookworm image is used.
-//
-// Set the --image flag to switch to using your custom image.
+// A collection of functions for building, testing, linting and scanning your Go project for
+// vulnerabilities.
 package main
 
 import (
@@ -44,7 +37,10 @@ type Golang struct {
 
 // New initializes the golang dagger module
 func New(
-	// a custom base image containing an installation of golang
+	// A custom base image containing an installation of golang. If no image is provided,
+	// one is resolved based on the Go version defined within the projects go.mod file. The
+	// official Go image is pulled from DockerHub using either the bullseye (< 1.20) or
+	// bookworm (> 1.20) variants.
 	// +optional
 	image *Container,
 	// a path to a directory containing the source code
@@ -60,7 +56,7 @@ func New(
 	return g
 }
 
-// Echoes the version of go used by a target project
+// Echoes the version of go defined within a projects go.mod file
 func (g *Golang) ModVersion(ctx context.Context) (string, error) {
 	return dag.Container().
 		From("busybox").
