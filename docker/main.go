@@ -1,25 +1,6 @@
-/*
-Copyright (c) 2024 Purple Clay
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-*/
-
+// Manage your docker based projects
+//
+// A collection of functions for building, saving and publishing your Docker based projects
 package main
 
 import (
@@ -35,19 +16,19 @@ type Docker struct{}
 // it serves as an intermediate type for chaining other functions
 type DockerBuild struct {
 	// +private
-	Base *Container
+	Image *Container
 }
 
-// Build an image using a Dockerfile
+// Build an image using a Dockerfile. Supports cross-compilation
 func (d *Docker) Build(
 	// the path to a directory that will be used as the docker context
 	// +required
 	src *Directory,
-	// the path to the Dockfile within the docker context
+	// the path to the Dockfile
 	// +default="Dockerfile"
 	// +required
 	file string,
-	// a list of build arguments (e.g. arg=value)
+	// a list of build arguments in the format of arg=value
 	// +optional
 	args []string,
 	// the name of a target build stage
@@ -76,12 +57,17 @@ func (d *Docker) Build(
 			Target:     target,
 		})
 
-	return &DockerBuild{Base: con}
+	return &DockerBuild{Image: con}
+}
+
+// Retrieves the underlying container built from a Dockerfile
+func (m *DockerBuild) Base() *Container {
+	return m.Image
 }
 
 // Save the built image as a tarball ready for exporting
 func (m *DockerBuild) Save() *File {
-	return m.Base.AsTarball()
+	return m.Image.AsTarball()
 }
 
 // Publish the built image to a target registry
@@ -90,5 +76,5 @@ func (m *DockerBuild) Publish(
 	// the image reference to publish
 	// +required
 	ref string) (string, error) {
-	return m.Base.Publish(ctx, ref)
+	return m.Image.Publish(ctx, ref)
 }
