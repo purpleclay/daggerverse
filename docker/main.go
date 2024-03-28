@@ -10,7 +10,47 @@ import (
 )
 
 // Docker dagger module
-type Docker struct{}
+type Docker struct {
+	// +private
+	Auth *DockerAuth
+}
+
+// New initializes the docker dagger module
+func New(
+	// the address of the registry to authenticate with
+	// +optional
+	// +default="docker.io"
+	registry,
+	// the username for authenticating with the registry
+	// +optional
+	username string,
+	// the password for authenticating with the registry
+	// +optional
+	password *dagger.Secret,
+) *Docker {
+	var auth *DockerAuth
+
+	if username != "" && password == nil {
+		panic("a username has been provided without a password")
+	} else if password != nil && username == "" {
+		panic("a password has been provided without a username")
+	} else {
+		auth = &DockerAuth{
+			Registry: registry,
+			Username: username,
+			Password: password,
+		}
+	}
+
+	return &Docker{Auth: auth}
+}
+
+// DockerAuth contains credentials for authenticating with a docker registry
+type DockerAuth struct {
+	Registry string
+	Username string
+	Password *dagger.Secret
+}
 
 // DockerBuild contains an image built from the provided Dockerfile,
 // it serves as an intermediate type for chaining other functions
@@ -50,14 +90,18 @@ func (d *Docker) Build(
 		}
 	}
 
-	con := dag.Container(dagger.ContainerOpts{Platform: dagger.Platform(platform)}).
-		Build(src, dagger.ContainerBuildOpts{
-			BuildArgs:  buildArgs,
-			Dockerfile: file,
-			Target:     target,
-		})
+	ctr := dag.Container(dagger.ContainerOpts{Platform: dagger.Platform(platform)})
+	if d.Auth != nil {
+		ctr = ctr.WithRegistryAuth(d.Auth.Registry, d.Auth.Username, d.Auth.Password)
+	}
 
-	return &DockerBuild{Image: con}
+	ctr = ctr.Build(src, dagger.ContainerBuildOpts{
+		BuildArgs:  buildArgs,
+		Dockerfile: file,
+		Target:     target,
+	})
+
+	return &DockerBuild{Image: ctr}
 }
 
 // Retrieves the underlying container built from a Dockerfile
