@@ -52,7 +52,11 @@ func (d *Docker) Build(
 	args []string,
 	// the name of a target build stage
 	// +optional
-	target string) *DockerBuild {
+	target string,
+	// the target platform
+	// +optional
+	// +default="linux/amd64"
+	platform string) *DockerBuild {
 	var buildArgs []dagger.BuildArg
 	if len(args) > 0 {
 		for _, arg := range args {
@@ -65,7 +69,7 @@ func (d *Docker) Build(
 		}
 	}
 
-	con := dag.Container().
+	con := dag.Container(dagger.ContainerOpts{Platform: dagger.Platform(platform)}).
 		Build(src, dagger.ContainerBuildOpts{
 			BuildArgs:  buildArgs,
 			Dockerfile: file,
