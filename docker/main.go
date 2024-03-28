@@ -73,7 +73,7 @@ type DockerBuild struct {
 func (d *Docker) Build(
 	// the path to a directory that will be used as the docker context
 	// +required
-	src *Directory,
+	dir *Directory,
 	// the path to the Dockfile
 	// +default="Dockerfile"
 	// +required
@@ -110,7 +110,7 @@ func (d *Docker) Build(
 			ctr = ctr.WithRegistryAuth(d.Auth.Registry, d.Auth.Username, d.Auth.Password)
 		}
 
-		ctr = ctr.Build(src, dagger.ContainerBuildOpts{
+		ctr = ctr.Build(dir, dagger.ContainerBuildOpts{
 			BuildArgs:  buildArgs,
 			Dockerfile: file,
 			Target:     target,
