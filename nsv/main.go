@@ -1,29 +1,21 @@
-/*
-Copyright (c) 2024 Purple Clay
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-*/
-
+// Semantic versioning without any config
+//
+// NSV (Next Semantic Version) is a convention-based semantic versioning tool that leans on the
+// power of conventional commits to make versioning your software a breeze!
+//
+// There are many semantic versioning tools already out there! But they typically require some
+// configuration or custom scripting in your CI system to make them work. No one likes managing config;
+// it is error-prone, and the slightest tweak ultimately triggers a cascade of change across your projects.
+//
+// Step in NSV. Designed to make intelligent semantic versioning decisions about your project without needing a
+// config file. Entirely convention-based, you can adapt your workflow from within your commit message.
+//
+// The power is at your fingertips.
 package main
 
 import (
 	"context"
+	"dagger/nsv/internal/dagger"
 )
 
 // NSV dagger module
@@ -37,7 +29,7 @@ type Nsv struct {
 	Src *Directory
 }
 
-// New initializes the golang dagger module
+// New initializes the NSV dagger module
 func New(
 	// a path to a directory containing the source code
 	// +required
@@ -62,6 +54,41 @@ func (n *Nsv) Next(
 	}
 
 	return n.Base.
+		WithEnvVariable("TINI_SUBREAPER", "1").
+		WithDirectory("/src", n.Src).
+		WithWorkdir("/src").
+		WithExec(cmd).
+		Stdout(ctx)
+}
+
+// Tags the next semantic version based on the commit history of your repository
+func (n *Nsv) Tag(
+	ctx context.Context,
+	// a list of relative paths of projects to analyze
+	// +optional
+	paths []string,
+	// an optional passphrase to unlock the GPG private key used for signing the tag
+	// +optional
+	gpgPassphrase *dagger.Secret,
+	// a base64 encoded GPG private key (armored) used for signing the tag
+	// +optional
+	gpgPrivateKey *dagger.Secret) (string, error) {
+	cmd := []string{"tag"}
+	if len(paths) > 0 {
+		cmd = append(cmd, paths...)
+	}
+
+	ctr := n.Base
+	if gpgPrivateKey != nil {
+		ctr = ctr.WithSecretVariable("GPG_PRIVATE_KEY", gpgPrivateKey).
+			WithEnvVariable("GPG_TRUST_LEVEL", "5")
+	}
+
+	if gpgPassphrase != nil {
+		ctr = ctr.WithSecretVariable("GPG_PASSPHRASE", gpgPassphrase)
+	}
+
+	return ctr.
 		WithEnvVariable("TINI_SUBREAPER", "1").
 		WithDirectory("/src", n.Src).
 		WithWorkdir("/src").
