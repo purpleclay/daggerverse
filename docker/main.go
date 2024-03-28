@@ -125,7 +125,7 @@ func (d *Docker) Build(
 // Save the built image as a tarball ready for exporting
 func (d *DockerBuild) Save(
 	ctx context.Context,
-	// a name for the exported tarball, will automatically be suffixed by its platform
+	// a name for the exported tarball, will automatically be suffixed by its platform (e.g. image_linux_amd64.)
 	// +optional
 	// +default="image"
 	name string,
@@ -138,7 +138,9 @@ func (d *DockerBuild) Save(
 		dir = dir.WithFile(fmt.Sprintf("%s_%s.tar", name, strings.Replace(string(platform), "/", "_", 1)),
 			build.AsTarball(dagger.ContainerAsTarballOpts{
 				ForcedCompression: dagger.Gzip,
-			}))
+			}),
+			dagger.DirectoryWithFileOpts{Permissions: 0o644},
+		)
 	}
 
 	return dir
@@ -168,7 +170,10 @@ func (d *DockerBuild) Publish(
 	for _, tag := range tags {
 		imageRef, err := ctr.Publish(ctx,
 			fmt.Sprintf("%s:%s", ref, tag),
-			ContainerPublishOpts{PlatformVariants: d.Builds},
+			ContainerPublishOpts{
+				PlatformVariants:  d.Builds,
+				ForcedCompression: dagger.Gzip,
+			},
 		)
 		if err != nil {
 			return "", err
