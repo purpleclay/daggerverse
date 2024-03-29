@@ -168,6 +168,10 @@ func (d *DockerBuild) Publish(
 
 	var imageRefs []string
 	for _, tag := range tags {
+		if idx := strings.LastIndex(tag, "/"); idx > -1 {
+			tag = tag[idx+1:]
+		}
+
 		imageRef, err := ctr.Publish(ctx,
 			fmt.Sprintf("%s:%s", ref, tag),
 			ContainerPublishOpts{
