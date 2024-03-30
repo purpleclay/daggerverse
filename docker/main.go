@@ -105,7 +105,7 @@ func (d *Docker) Build(
 
 	var builds []*Container
 	for _, pform := range platform {
-		ctr := dag.Container(dagger.ContainerOpts{Platform: dagger.Platform(pform)})
+		ctr := dag.Container(dagger.ContainerOpts{Platform: pform})
 		if d.Auth != nil {
 			ctr = ctr.WithRegistryAuth(d.Auth.Registry, d.Auth.Username, d.Auth.Password)
 		}
@@ -154,11 +154,14 @@ func (d *DockerBuild) Publish(
 	ref string,
 	// a list of tags that should be published with the image
 	// +optional
-	// default="latest"
 	tags []string) (string, error) {
 	// Sanitise the ref, stripping off any tags that may have accidentally been included
 	if strings.LastIndex(ref, ":") > -1 {
 		ref = ref[:strings.LastIndex(ref, ":")]
+	}
+
+	if len(tags) == 0 {
+		tags = append(tags, "latest")
 	}
 
 	ctr := dag.Container()
