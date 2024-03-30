@@ -4,5 +4,6 @@ use (
 	./docker
 	./golang
 	./nsv
+	./ponysay
 	./trivy
 )
