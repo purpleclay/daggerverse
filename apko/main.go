@@ -135,6 +135,23 @@ func (a *ApkoConfig) Build(
 	// +default=true
 	sbom bool,
 ) *Directory {
+	cmd := []string{
+		"build",
+		"/apko/apko.yaml",
+		ref,
+		imageFromRef(ref),
+	}
+	cmd = append(cmd, formatArgs(annotations, archs, pkgs, repos, ref, vcs, sbom)...)
+
+	return dag.Container().
+		From("cgr.dev/chainguard/apko").
+		WithWorkdir("apko").
+		WithFile("apko.yaml", a.Cfg).
+		WithExec(cmd).
+		Directory("")
+}
+
+func imageFromRef(ref string) string {
 	image := ref
 	if pos := strings.LastIndex(image, "/"); pos > -1 {
 		image = image[pos+1:]
@@ -143,43 +160,102 @@ func (a *ApkoConfig) Build(
 	if pos := strings.LastIndex(image, ":"); pos > -1 {
 		image = image[:pos]
 	}
-	image = image + ".tar"
+	return image + ".tar"
+}
 
-	cmd := []string{
-		"build",
-		"/apko/apko.yaml",
-		ref,
-		image,
-	}
+func formatArgs(annotations, archs, pkgs, repos []string, ref string, vcs, sbom bool) []string {
+	var args []string
 
 	if len(archs) > 0 {
-		cmd = append(cmd, "--arch", strings.Join(archs, ","))
+		args = append(args, "--arch", strings.Join(archs, ","))
 	}
 
 	if len(repos) > 0 {
-		cmd = append(cmd, "--repository-append", strings.Join(repos, ","))
+		args = append(args, "--repository-append", strings.Join(repos, ","))
 	}
 
 	if len(pkgs) > 0 {
-		cmd = append(cmd, "--package-append", strings.Join(pkgs, ","))
+		args = append(args, "--package-append", strings.Join(pkgs, ","))
 	}
 
 	if len(annotations) > 0 {
-		cmd = append(cmd, "--annotations", strings.Join(annotations, ","))
+		args = append(args, "--annotations", strings.Join(annotations, ","))
 	}
 
 	if !sbom {
-		cmd = append(cmd, "--sbom=false")
+		args = append(args, "--sbom=false")
 	}
 
 	if !vcs {
-		cmd = append(cmd, "--vcs=false")
+		args = append(args, "--vcs=false")
 	}
 
-	return dag.Container().
-		From("cgr.dev/chainguard/apko").
+	return args
+}
+
+// Builds an image from an apko configuration file and publishes it to an OCI
+// image registry
+//
+// Examples:
+//
+// # Publish an OCI image from a provided apko configuration file
+// $ dagger call load --cfg apko.yaml publish --ref registry:5000/example:latest
+//
+// # Publish an OCI image based on the Wolfi OS
+// $ dagger call with-wolfi build --ref registry:5000/example:latest
+func (a *ApkoConfig) Publish(
+	ctx context.Context,
+	// additional OCI annotations to add to the built image, expected in (key:value) format
+	// +optional
+	annotations []string,
+	// a list of architectures to build, overwriting the config
+	// +optional
+	archs []string,
+	// a list of additional packages to include within the built image
+	// +optional
+	pkgs []string,
+	// a list of additional repositories used to pull packages into the built image
+	// +optional
+	repos []string,
+	// the image reference to build
+	// +required
+	ref string,
+	// detect and embed VCS URLs within the built OCI image
+	// +optional
+	// default=true
+	vcs bool,
+	// generate and embed an SBOM (software bill of materials) within the built OCI image
+	// +optional
+	// +default=true
+	sbom bool,
+	// the address of the registry to authenticate with
+	// +optional
+	// +default="docker.io"
+	registry,
+	// the username for authenticating with the registry
+	// +optional
+	username string,
+	// the password for authenticating with the registry
+	// +optional
+	password *dagger.Secret,
+) (string, error) {
+	cmd := []string{
+		"publish",
+		"/apko/apko.yaml",
+		ref,
+	}
+	cmd = append(cmd, formatArgs(annotations, archs, pkgs, repos, ref, vcs, sbom)...)
+
+	ctr := dag.Container().
+		From("cgr.dev/chainguard/apko")
+
+	if registry != "" && username != "" && password != nil {
+		ctr = ctr.WithRegistryAuth(registry, username, password)
+	}
+
+	return ctr.
 		WithWorkdir("apko").
 		WithFile("apko.yaml", a.Cfg).
 		WithExec(cmd).
-		Directory("")
+		Stdout(ctx)
 }
