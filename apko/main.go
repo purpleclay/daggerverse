@@ -70,7 +70,6 @@ func (a *Apko) WithWolfi(
 			},
 		},
 		Entrypoint: types.ImageEntrypoint{
-			Type:    "service-bundle",
 			Command: entrypoint,
 		},
 		Cmd: cmd,
