@@ -28,8 +28,19 @@ func (a *Apko) Load(
 	return &ApkoConfig{Cfg: cfg}
 }
 
+type imageConfig struct {
+	Archs        []string
+	Repositories []string
+	Keyring      []string
+	Packages     []string
+	Entrypoint   string
+	Cmd          string
+	Env          []string
+}
+
 // Generates and loads a pre-configured apko configuration file for
-// building an image based on the Wolfi OS
+// building an image based on the Wolfi OS.  By default, the
+// [wolfi-base, ca-certificates-bundle] packages will be installed.
 //
 // Examples:
 //
@@ -39,6 +50,9 @@ func (a *Apko) Load(
 // # Extend the default Wolfi OS apko configuration file
 // $ dagger call with-wolfi --entrypoint="echo \$VAR1" --env="VAR1:VALUE1"
 func (a *Apko) WithWolfi(
+	// a list of container architectures (defaults to amd64)
+	// +optional
+	archs []string,
 	// the command to execute after the container entrypoint
 	// +optional
 	cmd string,
@@ -48,10 +62,39 @@ func (a *Apko) WithWolfi(
 	// a list of environment variables to set within the container image, expected in (key:value) format
 	// +optional
 	env []string,
+	// a list of packages to install within the container
+	// +optional
+	pkgs []string,
 ) (*ApkoConfig, error) {
-	environment := map[string]string{}
-	if len(env) > 0 {
-		for _, e := range env {
+	packages := append([]string{
+		"wolfi-base",
+		"ca-certificates-bundle",
+	}, pkgs...)
+
+	wolfi := imageConfig{
+		Archs:        archs,
+		Repositories: []string{"https://packages.wolfi.dev/os"},
+		Keyring:      []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"},
+		Packages:     packages,
+		Entrypoint:   entrypoint,
+		Cmd:          cmd,
+		Env:          env,
+	}
+
+	cfg, err := toFile(wolfi)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ApkoConfig{Cfg: cfg}, nil
+}
+
+func toFile(cfg imageConfig) (*File, error) {
+	environment := map[string]string{
+		"PATH": "/usr/sbin:/sbin:/usr/local/bin:/usr/bin:/bin",
+	}
+	if len(cfg.Env) > 0 {
+		for _, e := range cfg.Env {
 			key, value, found := strings.Cut(e, ":")
 			if !found {
 				return nil, fmt.Errorf("failed to parse malformed environment variable argument", e)
@@ -60,36 +103,87 @@ func (a *Apko) WithWolfi(
 		}
 	}
 
-	cfg := types.ImageConfiguration{
+	if len(cfg.Archs) == 0 {
+		cfg.Archs = append(cfg.Archs, "amd64")
+	}
+
+	var archs []types.Architecture
+	for _, arch := range cfg.Archs {
+		archs = append(archs, types.ParseArchitecture(arch))
+	}
+
+	imgCfg := types.ImageConfiguration{
 		Contents: types.ImageContents{
-			Repositories: []string{"https://packages.wolfi.dev/os"},
-			Keyring:      []string{"https://packages.wolfi.dev/os/wolfi-signing.rsa.pub"},
-			Packages: []string{
-				"wolfi-base",
-				"ca-certificates-bundle",
-			},
+			Repositories: cfg.Repositories,
+			Keyring:      cfg.Keyring,
+			Packages:     cfg.Packages,
 		},
 		Entrypoint: types.ImageEntrypoint{
-			Command: entrypoint,
+			Command: cfg.Entrypoint,
 		},
-		Cmd: cmd,
-		Archs: []types.Architecture{
-			types.ParseArchitecture("x86_64"),
-		},
+		Cmd:         cfg.Cmd,
+		Archs:       archs,
 		Environment: environment,
 	}
 
-	out, err := yaml.Marshal(&cfg)
+	out, err := yaml.Marshal(&imgCfg)
 	if err != nil {
 		return nil, err
 	}
 
-	dir := dag.Directory().
-		WithNewFile("apko.yaml", string(out), dagger.DirectoryWithNewFileOpts{Permissions: 0o644})
+	return dag.Directory().
+		WithNewFile("apko.yaml", string(out), dagger.DirectoryWithNewFileOpts{Permissions: 0o644}).
+		File("apko.yaml"), nil
+}
 
-	return &ApkoConfig{
-		Cfg: dir.File("apko.yaml"),
-	}, nil
+// Generates and loads a pre-configured apko configuration file for
+// building an image based on the Alpine OS. By default, the
+// [alpine-base, ca-certificates-bundle] packages will be installed.
+//
+// Examples:
+//
+// # Generate a default alpine OS apko configuration file
+// $ dagger call with-alpine --entrypoint="/bin/sh -l"
+//
+// # Extend the default alpine OS apko configuration file
+// $ dagger call with-alpine --entrypoint="echo \$VAR1" --env="VAR1:VALUE1"
+func (a *Apko) WithAlpine(
+	// a list of container architectures (defaults to amd64)
+	// +optional
+	archs []string,
+	// the command to execute after the container entrypoint
+	// +optional
+	cmd string,
+	// the entrypoint to the container
+	// +required
+	entrypoint string,
+	// a list of environment variables to set within the container image, expected in (key:value) format
+	// +optional
+	env []string,
+	// a list of packages to install within the container
+	// +optional
+	pkgs []string,
+) (*ApkoConfig, error) {
+	packages := append([]string{
+		"alpine-base",
+		"ca-certificates-bundle",
+	}, pkgs...)
+
+	alpine := imageConfig{
+		Archs:        archs,
+		Repositories: []string{"https://dl-cdn.alpinelinux.org/alpine/edge/main"},
+		Packages:     packages,
+		Entrypoint:   entrypoint,
+		Cmd:          cmd,
+		Env:          env,
+	}
+
+	cfg, err := toFile(alpine)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ApkoConfig{Cfg: cfg}, nil
 }
 
 // Prints the generated apko configuration file to stdout
