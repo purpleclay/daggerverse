@@ -229,6 +229,7 @@ func (a *ApkoConfig) Build(
 	sbom bool,
 ) *Directory {
 	cmd := []string{
+		"apko",
 		"build",
 		"/apko/apko.yaml",
 		ref,
@@ -236,9 +237,7 @@ func (a *ApkoConfig) Build(
 	}
 	cmd = append(cmd, formatArgs(annotations, archs, pkgs, repos, ref, vcs, sbom)...)
 
-	return dag.Container().
-		From("cgr.dev/chainguard/apko").
-		WithWorkdir("apko").
+	return base().
 		WithFile("apko.yaml", a.Cfg).
 		WithExec(cmd).
 		Directory("")
@@ -284,6 +283,13 @@ func formatArgs(annotations, archs, pkgs, repos []string, ref string, vcs, sbom 
 	}
 
 	return args
+}
+
+func base() *Container {
+	return dag.Container().
+		From("cgr.dev/chainguard/wolfi-base").
+		WithExec([]string{"apk", "add", "--no-cache", "apko"}).
+		WithWorkdir("apko")
 }
 
 // Builds an image from an apko configuration file and publishes it to an OCI
@@ -333,21 +339,23 @@ func (a *ApkoConfig) Publish(
 	password *dagger.Secret,
 ) (string, error) {
 	cmd := []string{
+		"apko",
 		"publish",
 		"/apko/apko.yaml",
 		ref,
 	}
 	cmd = append(cmd, formatArgs(annotations, archs, pkgs, repos, ref, vcs, sbom)...)
 
-	ctr := dag.Container().
-		From("cgr.dev/chainguard/apko")
+	ctr := base()
 
 	if registry != "" && username != "" && password != nil {
-		ctr = ctr.WithRegistryAuth(registry, username, password)
+		ctr = ctr.WithEnvVariable("REGISTRY", registry).
+			WithEnvVariable("REGISTRY_USER", username).
+			WithSecretVariable("REGISTRY_PASSWORD", password).
+			WithExec([]string{"sh", "-c", "apko login $REGISTRY -u $REGISTRY_USER -p $REGISTRY_PASSWORD"})
 	}
 
 	return ctr.
-		WithWorkdir("apko").
 		WithFile("apko.yaml", a.Cfg).
 		WithExec(cmd).
 		Stdout(ctx)
