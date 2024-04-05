@@ -90,7 +90,7 @@ func (d *Docker) Build(
 	dir *Directory,
 	// the path to the Dockfile
 	// +default="Dockerfile"
-	// +required
+	// +optional
 	file string,
 	// a list of build arguments in the format of arg=value
 	// +optional
