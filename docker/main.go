@@ -8,8 +8,6 @@ import (
 	"dagger/docker/internal/dagger"
 	"fmt"
 	"strings"
-
-	"github.com/containerd/containerd/platforms"
 )
 
 // Docker dagger module
@@ -20,6 +18,11 @@ type Docker struct {
 }
 
 // New initializes the docker dagger module
+//
+// Examples:
+//
+// # Authenticate with a registry in preprarion for publishing a built image
+// $ dagger call --registry ghcr.io --username purpleclay --password env:GITHUB_TOKEN
 func New(
 	// the address of the registry to authenticate with
 	// +optional
@@ -70,6 +73,17 @@ type DockerBuild struct {
 }
 
 // Build an image using a Dockerfile. Supports cross-compilation
+//
+// Examples:
+//
+// # Build an image using the current directory as the context
+// $ dagger call build --dir .
+//
+// # Build an image using cross-compilation
+// $ dagger call build --dir . --platfrom "linux/amd64,linux/arm64"
+//
+// # Build an image using build-args and a build target
+// $ dagger call build --dir . --args "VERSION=0.1.0" --target debug
 func (d *Docker) Build(
 	// the path to a directory that will be used as the docker context
 	// +required
@@ -86,6 +100,7 @@ func (d *Docker) Build(
 	target string,
 	// a list of target platforms for cross-compilation
 	// +optional
+	// +default=["linux/amd64"]
 	platform []Platform) *DockerBuild {
 	var buildArgs []dagger.BuildArg
 	if len(args) > 0 {
@@ -97,10 +112,6 @@ func (d *Docker) Build(
 				})
 			}
 		}
-	}
-
-	if len(platform) == 0 {
-		platform = append(platform, Platform(platforms.DefaultString()))
 	}
 
 	var builds []*Container
@@ -123,6 +134,11 @@ func (d *Docker) Build(
 }
 
 // Save the built image as a tarball ready for exporting
+//
+// Examples:
+//
+// # Save the tarball with the given name
+// $ dagger call build --dir . save --name awesome_service
 func (d *DockerBuild) Save(
 	ctx context.Context,
 	// a name for the exported tarball, will automatically be suffixed by its platform (e.g. image_linux_amd64.)
@@ -147,6 +163,14 @@ func (d *DockerBuild) Save(
 }
 
 // Publish the built image to a target registry
+//
+// Examples:
+//
+// # Publish a built image to the ttl.sh registry
+// $ dagger call build --dir . publish --ref ttl.sh/purpleclay-test
+//
+// # Publish a cross-compiled image to the ttl.sh registry with multiple tags
+// $ dagger call build --dir . --platform "linux/amd64,linux/arm64" publish --ref ttl.sh/purpleclay-test --tags "latest,0.1.0"
 func (d *DockerBuild) Publish(
 	ctx context.Context,
 	// a fully qualified image reference without tags
@@ -154,6 +178,7 @@ func (d *DockerBuild) Publish(
 	ref string,
 	// a list of tags that should be published with the image
 	// +optional
+	// +default=["latest"]
 	tags []string) (string, error) {
 	// Sanitise the ref, stripping off any tags that may have accidentally been included
 	if strings.LastIndex(ref, ":") > -1 {
