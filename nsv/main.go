@@ -16,6 +16,7 @@ package main
 import (
 	"context"
 	"dagger/nsv/internal/dagger"
+	"fmt"
 )
 
 // NSV dagger module
@@ -43,12 +44,37 @@ func base() *Container {
 }
 
 // Prints the next semantic version based on the commit history of your repository
+//
+// Examples:
+//
+// # Print the next semantic version
+// $ dagger call next
+//
+// # Print the next semantic version for multiple monorepo sub-projects
+// $ dagger call next --paths project1,project2
+//
+// # Print the next semantic version and show how the version was calculated
+// $ dagger call next --show
 func (n *Nsv) Next(
 	ctx context.Context,
 	// a list of relative paths of projects to analyze
 	// +optional
-	paths []string) (string, error) {
+	paths []string,
+	// show how the next semantic version was calculated
+	// +optional
+	show bool,
+	// pretty-print the output of the next semantic version in a given format.
+	// Supported formats are (full, compact). Must be used in conjunction with
+	// the show flag
+	// +optional
+	// +default="full"
+	pretty string,
+) (string, error) {
 	cmd := []string{"next"}
+	if show {
+		cmd = append(cmd, "--show", fmt.Sprintf("--pretty=%s", pretty))
+	}
+
 	if len(paths) > 0 {
 		cmd = append(cmd, paths...)
 	}
@@ -62,11 +88,31 @@ func (n *Nsv) Next(
 }
 
 // Tags the next semantic version based on the commit history of your repository
+//
+// Examples:
+//
+// # Tag the next semantic version
+// $ dagger call tag
+//
+// # Tag the next semantic version for multiple monorepo sub-projects
+// $ dagger call tag --paths project1,project2
+//
+// # Tag the next semantic version and show how the version was calculated
+// $ dagger call tag --show
 func (n *Nsv) Tag(
 	ctx context.Context,
 	// a list of relative paths of projects to analyze
 	// +optional
 	paths []string,
+	// show how the next semantic version was calculated
+	// +optional
+	show bool,
+	// pretty-print the output of the next semantic version in a given format.
+	// Supported formats are (full, compact). Must be used in conjunction with
+	// the show flag
+	// +optional
+	// +default="full"
+	pretty string,
 	// an optional passphrase to unlock the GPG private key used for signing the tag
 	// +optional
 	gpgPassphrase *dagger.Secret,
@@ -74,6 +120,10 @@ func (n *Nsv) Tag(
 	// +optional
 	gpgPrivateKey *dagger.Secret) (string, error) {
 	cmd := []string{"tag"}
+	if show {
+		cmd = append(cmd, "--show", fmt.Sprintf("--pretty=%s", pretty))
+	}
+
 	if len(paths) > 0 {
 		cmd = append(cmd, paths...)
 	}
