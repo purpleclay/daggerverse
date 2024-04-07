@@ -1,31 +1,14 @@
-/*
-Copyright (c) 2024 Purple Clay
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-*/
-
 package main
 
 import (
 	"context"
-	"dagger/trivy/internal/dagger"
+	"fmt"
 	"strconv"
+)
+
+const (
+	TrivyGithubRepo = "aquasecurity/trivy"
+	TrivyBaseImage  = "ghcr.io/aquasecurity/trivy"
 )
 
 // Trivy dagger module
@@ -35,25 +18,37 @@ type Trivy struct {
 	Base *Container
 }
 
-// New initializes the golang dagger module
+// New initializes the trivy dagger module
 func New(
+	ctx context.Context,
 	// a custom base image containing an installation of trivy
 	// +optional
-	image *Container) *Trivy {
-	g := &Trivy{Base: image}
-	if g.Base == nil {
-		g.Base = base()
+	base *Container) (*Trivy, error) {
+
+	var err error
+	if base == nil {
+		base, err = defaultImage(ctx)
+	} else {
+		if _, err = base.WithExec([]string{"version"}).Sync(ctx); err != nil {
+			return nil, err
+		}
+
+		base = base.WithMountedCache("/root/.cache/trivy", dag.CacheVolume("trivydb"))
 	}
 
-	return g
+	return &Trivy{Base: base}, err
 }
 
-func base() *Container {
-	pkgs := []string{"ca-certificates", "git", "trivy"}
+func defaultImage(ctx context.Context) (*Container, error) {
+	tag, err := dag.Github().GetLatestRelease("aquasecurity/trivy").Tag(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-	return dag.Wolfi().
-		Container(dagger.WolfiContainerOpts{Packages: pkgs}).
-		WithMountedCache("/root/.cache/trivy", dag.CacheVolume("trivydb"))
+	// Trim the v prefix from the tag
+	return dag.Container().
+		From(fmt.Sprintf("%s:%s", TrivyBaseImage, tag[1:])).
+		WithMountedCache("/root/.cache/trivy", dag.CacheVolume("trivydb")), nil
 }
 
 // Scan a published (or remote) image for any vulnerabilities
@@ -61,18 +56,18 @@ func (t *Trivy) Image(
 	ctx context.Context,
 	// the returned exit code when vulnerabilities are detected
 	// +optional
-	// +default=1
+	// +default=0
 	exitCode int,
 	// the reference to an image within a repository
 	// +required
 	ref string,
 	// the types of scanner to execute
 	// +optional
-	// +default="vuln"
+	// +default="vuln,secret"
 	scanners string,
 	// the severity of security issues to detect
 	// +optional
-	// +default="HIGH,CRITICAL"
+	// +default="UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
 	severity string,
 	// filter out any vulnerabilities without a known fix
 	// +optional
@@ -82,7 +77,6 @@ func (t *Trivy) Image(
 	// +default="os,library"
 	vulnType string) (string, error) {
 	cmd := []string{
-		"trivy",
 		"image",
 		ref,
 		"--scanners",
@@ -106,18 +100,18 @@ func (t *Trivy) ImageLocal(
 	ctx context.Context,
 	// the returned exit code when vulnerabilities are detected
 	// +optional
-	// +default=1
+	// +default=0
 	exitCode int,
 	// the path to an exported image tar
 	// +required
 	ref *File,
 	// the types of scanner to execute
 	// +optional
-	// +default="vuln"
+	// +default="vuln,secret"
 	scanners string,
 	// the severity of security issues to detect
 	// +optional
-	// +default="HIGH,CRITICAL"
+	// +default="UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
 	severity string,
 	// filter out any vulnerabilities without a known fix
 	// +optional
@@ -127,7 +121,6 @@ func (t *Trivy) ImageLocal(
 	// +default="os,library"
 	vulnType string) (string, error) {
 	cmd := []string{
-		"trivy",
 		"image",
 		"--input",
 		"/scan/image.tar",
@@ -155,18 +148,18 @@ func (t *Trivy) Filesystem(
 	ctx context.Context,
 	// the returned exit code when vulnerabilities are detected
 	// +optional
-	// +default=1
+	// +default=0
 	exitCode int,
 	// the path to directory
 	// +required
 	ref *Directory,
 	// the types of scanner to execute
 	// +optional
-	// +default="vuln"
+	// +default="vuln,secret"
 	scanners string,
 	// the severity of security issues to detect
 	// +optional
-	// +default="HIGH,CRITICAL"
+	// +default="UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
 	severity string,
 	// filter out any vulnerabilities without a known fix
 	// +optional
@@ -176,7 +169,6 @@ func (t *Trivy) Filesystem(
 	// +default="os,library"
 	vulnType string) (string, error) {
 	cmd := []string{
-		"trivy",
 		"filesystem",
 		".",
 		"--scanners",
