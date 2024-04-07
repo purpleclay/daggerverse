@@ -18,6 +18,8 @@ type Trivy struct {
 	Base *Container
 }
 
+// --format template --template "@contrib/junit.tpl"
+
 // New initializes the trivy dagger module
 func New(
 	ctx context.Context,
@@ -58,6 +60,13 @@ func (t *Trivy) Image(
 	// +optional
 	// +default=0
 	exitCode int,
+	// the type of format to use when generating the compliance report
+	// +optional
+	// +default="table"
+	format string,
+	// filter out any vulnerabilities without a known fix
+	// +optional
+	ignoreUnfixed bool,
 	// the reference to an image within a repository
 	// +required
 	ref string,
@@ -69,9 +78,9 @@ func (t *Trivy) Image(
 	// +optional
 	// +default="UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
 	severity string,
-	// filter out any vulnerabilities without a known fix
+	// a custom go template to use when generating the compliance report
 	// +optional
-	ignoreUnfixed bool,
+	template string,
 	// the types of vulnerabilities to scan for
 	// +optional
 	// +default="os,library"
@@ -87,9 +96,14 @@ func (t *Trivy) Image(
 		vulnType,
 		"--exit-code",
 		strconv.Itoa(exitCode),
+		"--format",
+		format,
 	}
 	if ignoreUnfixed {
 		cmd = append(cmd, "--ignore-unfixed")
+	}
+	if template != "" {
+		cmd = append(cmd, "--template", template)
 	}
 
 	return t.Base.WithExec(cmd).Stdout(ctx)
@@ -102,6 +116,13 @@ func (t *Trivy) ImageLocal(
 	// +optional
 	// +default=0
 	exitCode int,
+	// the type of format to use when generating the compliance report
+	// +optional
+	// +default="table"
+	format string,
+	// filter out any vulnerabilities without a known fix
+	// +optional
+	ignoreUnfixed bool,
 	// the path to an exported image tar
 	// +required
 	ref *File,
@@ -113,9 +134,9 @@ func (t *Trivy) ImageLocal(
 	// +optional
 	// +default="UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
 	severity string,
-	// filter out any vulnerabilities without a known fix
+	// a custom go template to use when generating the compliance report
 	// +optional
-	ignoreUnfixed bool,
+	template string,
 	// the types of vulnerabilities to scan for
 	// +optional
 	// +default="os,library"
@@ -132,9 +153,14 @@ func (t *Trivy) ImageLocal(
 		vulnType,
 		"--exit-code",
 		strconv.Itoa(exitCode),
+		"--format",
+		format,
 	}
 	if ignoreUnfixed {
 		cmd = append(cmd, "--ignore-unfixed")
+	}
+	if template != "" {
+		cmd = append(cmd, "--template", template)
 	}
 
 	return t.Base.
@@ -146,13 +172,20 @@ func (t *Trivy) ImageLocal(
 // Scan a filesystem for any vulnerabilities
 func (t *Trivy) Filesystem(
 	ctx context.Context,
+	// the path to directory to scan
+	// +required
+	dir *Directory,
 	// the returned exit code when vulnerabilities are detected
 	// +optional
 	// +default=0
 	exitCode int,
-	// the path to directory
-	// +required
-	ref *Directory,
+	// the type of format to use when generating the compliance report
+	// +optional
+	// +default="table"
+	format string,
+	// filter out any vulnerabilities without a known fix
+	// +optional
+	ignoreUnfixed bool,
 	// the types of scanner to execute
 	// +optional
 	// +default="vuln,secret"
@@ -161,9 +194,9 @@ func (t *Trivy) Filesystem(
 	// +optional
 	// +default="UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
 	severity string,
-	// filter out any vulnerabilities without a known fix
+	// a custom go template to use when generating the compliance report
 	// +optional
-	ignoreUnfixed bool,
+	template string,
 	// the types of vulnerabilities to scan for
 	// +optional
 	// +default="os,library"
@@ -179,13 +212,18 @@ func (t *Trivy) Filesystem(
 		vulnType,
 		"--exit-code",
 		strconv.Itoa(exitCode),
+		"--format",
+		format,
 	}
 	if ignoreUnfixed {
 		cmd = append(cmd, "--ignore-unfixed")
 	}
+	if template != "" {
+		cmd = append(cmd, "--template", template)
+	}
 
 	return t.Base.
-		WithDirectory("/scan", ref).
+		WithDirectory("/scan", dir).
 		WithWorkdir("/scan").
 		WithExec(cmd).
 		Stdout(ctx)
