@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"dagger/trivy/internal/dagger"
 	"fmt"
 	"strconv"
 )
@@ -17,7 +18,7 @@ type Trivy struct {
 	// Base is the image used by all trivy dagger functions
 	// +private
 	Base *Container
-	// Identified whether the experimental YAML format for the
+	// Identifies whether the experimental YAML format for the
 	// ignore file has been provided. Once this is stable, it
 	// will be loaded automatically
 	// +private
@@ -147,9 +148,16 @@ func (t *Trivy) Image(
 	// filter out any vulnerabilities without a known fix
 	// +optional
 	ignoreUnfixed bool,
+	// the password for authenticating with the registry
+	// +optional
+	password *dagger.Secret,
 	// the reference to an image within a repository
 	// +required
 	ref string,
+	// the address of the registry to authenticate with
+	// +optional
+	// +default="docker.io"
+	registry string,
 	// the types of scanner to execute (vuln,secret)
 	// +optional
 	scanners string,
@@ -159,6 +167,9 @@ func (t *Trivy) Image(
 	// a custom go template to use when generating the compliance report
 	// +optional
 	template string,
+	// the username for authenticating with the registry
+	// +optional
+	username string,
 	// the types of vulnerabilities to scan for (os,library)
 	// +optional
 	vulnType string) (string, error) {
@@ -176,7 +187,12 @@ func (t *Trivy) Image(
 	}
 	cmd = append(cmd, sargs.Args()...)
 
-	return t.Base.WithExec(cmd).Stdout(ctx)
+	ctr := t.Base
+	if registry != "" && username != "" && password != nil {
+		ctr = t.Base.WithRegistryAuth(registry, username, password)
+	}
+
+	return ctr.WithExec(cmd).Stdout(ctx)
 }
 
 // Scan a locally exported image for any vulnerabilities
