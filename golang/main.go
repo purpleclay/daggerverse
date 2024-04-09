@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"runtime"
 	"strings"
+
+	"golang.org/x/mod/modfile"
 )
 
 const (
@@ -18,6 +20,8 @@ const (
 	go1_18 = "golang:1.18.10-bullseye"
 	go1_19 = "golang:1.19.13-bullseye"
 	go1_20 = "golang:1.20.13-bookworm"
+
+	goMod = "go.mod"
 )
 
 // Golang dagger module
@@ -30,47 +34,75 @@ type Golang struct {
 	// +private
 	Src *Directory
 
-	// Version of the go project
+	// Version of the go project, defined within the go.mod file
 	// +private
 	Version string
 }
 
 // New initializes the golang dagger module
 func New(
+	ctx context.Context,
 	// A custom base image containing an installation of golang. If no image is provided,
 	// one is resolved based on the Go version defined within the projects go.mod file. The
 	// official Go image is pulled from DockerHub using either the bullseye (< 1.20) or
 	// bookworm (> 1.20) variants.
 	// +optional
-	image *Container,
+	base *Container,
 	// a path to a directory containing the source code
 	// +required
-	src *Directory) *Golang {
-	g := &Golang{Base: image, Src: src}
-	if g.Base == nil {
-		// Detect the version of Go and select the right base image
-		g.Version, _ = g.ModVersion(context.Background())
-		g.Base = base(g.Version)
+	src *Directory) (*Golang, error) {
+
+	version, err := inspectModVersion(context.Background(), src)
+	if err != nil {
+		return nil, err
 	}
 
-	return g
+	if base == nil {
+		base = defaultImage(version)
+	} else {
+		if _, err = base.WithExec([]string{"go", "version"}).Sync(ctx); err != nil {
+			return nil, err
+		}
+	}
+
+	// Ensure cache mounts are configured for any type of image
+	base = mountCaches(ctx, base)
+
+	return &Golang{Base: base, Src: src, Version: version}, nil
 }
 
-// Echoes the version of go defined within a projects go.mod file
-func (g *Golang) ModVersion(ctx context.Context) (string, error) {
-	return dag.Container().
-		From("busybox").
-		WithDirectory("/src", g.Src).
-		WithWorkdir("/src").
-		WithExec([]string{"ash", "-c", "grep -E '^go' go.mod | awk '{printf $2}'"}).
-		Stdout(ctx)
+func inspectModVersion(ctx context.Context, src *Directory) (string, error) {
+	mod, err := src.File(goMod).Contents(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	f, err := modfile.Parse(goMod, []byte(mod), nil)
+	if err != nil {
+		return "", err
+	}
+	return f.Go.Version, nil
 }
 
-func base(version string) *Container {
-	// These are mapped directly to GOCACHE and GOMOD environment variables
-	mod := dag.CacheVolume("gomod")
-	build := dag.CacheVolume("gobuild")
+func mountCaches(ctx context.Context, base *Container) *Container {
+	goCacheEnv, _ := base.WithExec([]string{"go", "env", "GOCACHE"}).Stdout(ctx)
+	goModCacheEnv, _ := base.WithExec([]string{"go", "env", "GOMODCACHE"}).Stdout(ctx)
 
+	gomod := dag.CacheVolume("gomod")
+	gobuild := dag.CacheVolume("gobuild")
+
+	return base.
+		WithMountedCache(goModCacheEnv, gomod).
+		WithMountedCache(goCacheEnv, gobuild)
+}
+
+// Echoes the version of go defined within a projects go.mod file.
+// It expects the go.mod file to be located within the root of the project
+func (g *Golang) ModVersion() string {
+	return g.Version
+}
+
+func defaultImage(version string) *Container {
 	var image string
 	switch version {
 	case "1.17":
@@ -85,10 +117,7 @@ func base(version string) *Container {
 		image = fmt.Sprintf("golang:%s-bookworm", version)
 	}
 
-	return dag.Container().
-		From(image).
-		WithMountedCache("/go/pkg/mod", mod).
-		WithMountedCache("/root/.cache/go-build", build)
+	return dag.Container().From(image)
 }
 
 // Build a static release binary without debug information or symbols
