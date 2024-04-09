@@ -1,3 +1,7 @@
+// Trivy is a comprehensive and versatile security scanner
+//
+// A highly configurable security scanner that can be used to scan both local and remote
+// container images, or filesystems for vulnerabilities.
 package main
 
 import (
@@ -13,7 +17,7 @@ const (
 	TrivyWorkDir    = "scan"
 )
 
-// Trivy dagger module
+// Trivy Dagger Module
 type Trivy struct {
 	// Base is the image used by all trivy dagger functions
 	// +private
@@ -36,7 +40,7 @@ type scanArgs struct {
 	VulnType      string
 }
 
-func (a scanArgs) Args() []string {
+func (a scanArgs) args() []string {
 	args := []string{}
 	if a.ExitCode != 0 {
 		args = append(args, "--exit-code", strconv.Itoa(a.ExitCode))
@@ -137,6 +141,23 @@ func defaultImage(ctx context.Context) (*Container, error) {
 }
 
 // Scan a published (or remote) image for any vulnerabilities
+//
+// Examples:
+//
+// # Scan a container image
+// $ trivy image --ref golang:1.21.7-bookworm
+//
+// # Filter by severities
+// $ trivy image --severity HIGH,CRITICAL --ref golang:1.21.7-bookworm
+//
+// # Ignore unfixed/unpatched vulnerabilities
+// $ trivy image --ignore-unfixed --ref golang:1.21.7-bookworm
+//
+// # Configure scan using a trivy configuration file
+// $ trivy --cfg trivy.yaml image --ref golang:1.21.7-bookworm
+//
+// # Configure scan to suppress accepted vulnerabilities
+// $ trivy --ignore-file .trivyignore image --ref golang:1.21.7-bookworm
 func (t *Trivy) Image(
 	ctx context.Context,
 	// the returned exit code when vulnerabilities are detected (0)
@@ -185,7 +206,7 @@ func (t *Trivy) Image(
 		Template:      template,
 		VulnType:      vulnType,
 	}
-	cmd = append(cmd, sargs.Args()...)
+	cmd = append(cmd, sargs.args()...)
 
 	ctr := t.Base
 	if registry != "" && username != "" && password != nil {
@@ -196,6 +217,25 @@ func (t *Trivy) Image(
 }
 
 // Scan a locally exported image for any vulnerabilities
+//
+// $ docker save golang:1.21.7-bookworm -o image.tar
+//
+// Examples:
+//
+// # Scan a container image
+// $ trivy image-local --ref image.tar
+//
+// # Filter by severities
+// $ trivy image-local --severity HIGH,CRITICAL --ref image.tar
+//
+// # Ignore unfixed/unpatched vulnerabilities
+// $ trivy image-local --ignore-unfixed --ref image.tar
+//
+// # Configure scan using a trivy configuration file
+// $ trivy --cfg trivy.yaml image-local --ref image.tar
+//
+// # Configure scan to suppress accepted vulnerabilities
+// $ trivy --ignore-file .trivyignore image-local --ref image.tar
 func (t *Trivy) ImageLocal(
 	ctx context.Context,
 	// the returned exit code when vulnerabilities are detected (0)
@@ -235,7 +275,7 @@ func (t *Trivy) ImageLocal(
 		Template:      template,
 		VulnType:      vulnType,
 	}
-	cmd = append(cmd, sargs.Args()...)
+	cmd = append(cmd, sargs.args()...)
 
 	return t.Base.
 		WithMountedFile("image.tar", ref).
@@ -244,6 +284,17 @@ func (t *Trivy) ImageLocal(
 }
 
 // Scan a filesystem for any vulnerabilities
+//
+// Examples:
+//
+// # Scan a directory
+// $ trivy filesystem /path/to/your_project
+//
+// # Scan a remote repository
+// $ trivy filesystem --dir https://github.com/dagger/dagger
+//
+// # Scan a single file
+// $ trivy filesystem go.mod
 func (t *Trivy) Filesystem(
 	ctx context.Context,
 	// the path to directory to scan
@@ -282,7 +333,7 @@ func (t *Trivy) Filesystem(
 		Template:      template,
 		VulnType:      vulnType,
 	}
-	cmd = append(cmd, sargs.Args()...)
+	cmd = append(cmd, sargs.args()...)
 
 	return t.Base.
 		WithDirectory(TrivyWorkDir, dir).

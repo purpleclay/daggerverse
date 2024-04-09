@@ -23,5 +23,5 @@ dagger call -m github.com/purpleclay/daggerverse/trivy image-local --ref image.t
 Scans the given path for any vulnerabilities:
 
 ```sh
-dagger call -m github.com/purpleclay/daggerverse/trivy filesystem --ref .
+dagger call -m github.com/purpleclay/daggerverse/trivy filesystem --dir .
 ```
