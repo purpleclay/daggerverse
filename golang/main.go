@@ -21,7 +21,8 @@ const (
 	go1_19 = "golang:1.19.13-bullseye"
 	go1_20 = "golang:1.20.13-bookworm"
 
-	goMod = "go.mod"
+	goMod     = "go.mod"
+	goWorkDir = "/src"
 )
 
 // Golang dagger module
@@ -60,16 +61,16 @@ func New(
 	if base == nil {
 		base = defaultImage(version)
 	} else {
-		// TODO: might have to remove entrypoint here (since it isn't defined in default base images)
-		if _, err = base.WithExec([]string{"go", "version"}).Sync(ctx); err != nil {
+		if _, err = base.WithoutEntrypoint().WithExec([]string{"go", "version"}).Sync(ctx); err != nil {
 			return nil, err
 		}
 	}
 
 	// Ensure cache mounts are configured for any type of image
 	base = mountCaches(ctx, base).
-		WithDirectory("/src", src).
-		WithWorkdir("/src")
+		WithDirectory(goWorkDir, src).
+		WithWorkdir(goWorkDir).
+		WithoutEntrypoint()
 
 	return &Golang{Base: base, Src: src, Version: version}, nil
 }
@@ -123,7 +124,7 @@ func defaultImage(version string) *Container {
 	return dag.Container().From(image)
 }
 
-// Build a static release binary without debug information or symbols
+// Build a static binary from a Go project using the provided configuration
 func (g *Golang) Build(
 	// the path to the main.go file of the project
 	// +optional
@@ -136,7 +137,12 @@ func (g *Golang) Build(
 	os string,
 	// the target architecture
 	// +optional
-	arch string) *Directory {
+	arch string,
+	// flags to configure the linking during a build, by default sets flags for
+	// generating a release binary
+	// +optional
+	// +default=["-s", "-w"]
+	ldflags []string) *Directory {
 	if os == "" {
 		os = runtime.GOOS
 	}
@@ -145,7 +151,7 @@ func (g *Golang) Build(
 		arch = runtime.GOARCH
 	}
 
-	cmd := []string{"go", "build", "-ldflags", "-s -w"}
+	cmd := []string{"go", "build", "-ldflags", strings.Join(ldflags, " ")}
 	if out != "" {
 		cmd = append(cmd, "-o", out)
 	}
@@ -158,10 +164,8 @@ func (g *Golang) Build(
 		WithEnvVariable("CGO_ENABLED", "0").
 		WithEnvVariable("GOOS", os).
 		WithEnvVariable("GOARCH", arch).
-		WithDirectory("/src", g.Src).
-		WithWorkdir("/src").
 		WithExec(cmd).
-		Directory("/src")
+		Directory(goWorkDir)
 }
 
 // Execute tests defined within the target project, ignores benchmarks by default
