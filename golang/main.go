@@ -269,18 +269,29 @@ func (g *Golang) Lint(
 	// the type of report that should be generated
 	// +optional
 	// +default="colored-line-number"
-	format string) *File {
-	// Install using the recommended approach: https://golangci-lint.run/welcome/install/
-	installCmd := []string{
-		"curl",
-		"-sSfL",
-		"https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh",
-		"|",
-		"sh",
-		"-s",
-		"--",
-		"-b",
-		"$(go env GOPATH)/bin",
+	format string) (string, error) {
+
+	ctr := g.Base
+	if _, err := ctr.WithExec([]string{"golangci-lint", "version"}).Sync(ctx); err != nil {
+		tag, err := dag.Github().GetLatestRelease("golangci/golangci-lint").Tag(ctx)
+		if err != nil {
+			return "", err
+		}
+
+		// Install using the recommended approach: https://golangci-lint.run/welcome/install/
+		cmd := []string{
+			"curl",
+			"-sSfL",
+			"https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh",
+			"|",
+			"sh",
+			"-s",
+			"--",
+			"-b",
+			"$(go env GOPATH)/bin",
+			tag,
+		}
+		ctr = ctr.WithExec([]string{"bash", "-c", strings.Join(cmd, " ")})
 	}
 
 	cmd := []string{
@@ -292,15 +303,7 @@ func (g *Golang) Lint(
 		g.Version,
 		"--out-format",
 		format,
-		"|",
-		"tee",
-		"lint.out",
 	}
 
-	return g.Base.
-		WithDirectory("/src", g.Src).
-		WithWorkdir("/src").
-		WithExec([]string{"bash", "-c", strings.Join(installCmd, " ")}).
-		WithExec([]string{"bash", "-o", "pipefail", "-c", strings.Join(cmd, " ")}).
-		File("lint.out")
+	return ctr.WithExec(cmd).Stdout(ctx)
 }
