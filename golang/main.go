@@ -166,6 +166,7 @@ func (g *Golang) Build(
 
 // Execute tests defined within the target project, ignores benchmarks by default
 func (g *Golang) Test(
+	ctx context.Context,
 	// if only short running tests should be executed
 	// +optional
 	// +default=true
@@ -179,12 +180,8 @@ func (g *Golang) Test(
 	run string,
 	// skip select tests, defined using a regex
 	// +optional
-	skip string,
-	// log all output from tests even if there are successful
-	// +optional
-	verbose bool,
-) *Directory {
-	cmd := []string{"go", "test", "-vet=off", "-covermode=atomic", "-coverprofile=coverage.out", "-json", "./..."}
+	skip string) (string, error) {
+	cmd := []string{"go", "test", "-vet=off", "-covermode=atomic", "./..."}
 	if short {
 		cmd = append(cmd, "-short")
 	}
@@ -201,25 +198,12 @@ func (g *Golang) Test(
 		cmd = append(cmd, []string{"-skip", skip}...)
 	}
 
-	if verbose {
-		cmd = append(cmd, "-v")
-	}
-
-	// Capture JSON report and pipe it into tparse
-	cmd = append(cmd, []string{"|", "tee", "test-report.json", "|", "tparse", "-follow"}...)
-
-	return g.Base.
-		WithDirectory("/src", g.Src).
-		WithWorkdir("/src").
-		WithExec([]string{"go", "install", "github.com/mfridman/tparse@latest"}).
-		WithExec([]string{"go", "install", "gotest.tools/gotestsum@latest"}).
-		WithExec([]string{"sh", "-c", strings.Join(cmd, " ")}).
-		WithExec([]string{"gotestsum", "--junitfile", "junit-report.xml", "--raw-command", "cat", "test-report.json"}).
-		Directory("/src")
+	return g.Base.WithExec(cmd).Stdout(ctx)
 }
 
 // Execute benchmarks defined within the target project, excludes all other tests
 func (g *Golang) Bench(
+	ctx context.Context,
 	// print memory allocation statistics for benchmarks
 	// +optional
 	// +default=true
@@ -227,19 +211,14 @@ func (g *Golang) Bench(
 	// the time.Duration each benchmark should run for
 	// +optional
 	// +default="5s"
-	time string) *Directory {
+	time string) (string, error) {
+
 	cmd := []string{"go", "test", "-bench=.", "-benchtime", time, "-run=^#", "./..."}
 	if memory {
 		cmd = append(cmd, "-benchmem")
 	}
 
-	cmd = append(cmd, []string{"|", "tee", "bench.out"}...)
-
-	return g.Base.
-		WithDirectory("/src", g.Src).
-		WithWorkdir("/src").
-		WithExec([]string{"sh", "-c", strings.Join(cmd, " ")}).
-		Directory("/src")
+	return g.Base.WithExec(cmd).Stdout(ctx)
 }
 
 // Scans the target project for vulnerabilities using govulncheck
