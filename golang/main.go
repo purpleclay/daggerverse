@@ -60,13 +60,16 @@ func New(
 	if base == nil {
 		base = defaultImage(version)
 	} else {
+		// TODO: might have to remove entrypoint here (since it isn't defined in default base images)
 		if _, err = base.WithExec([]string{"go", "version"}).Sync(ctx); err != nil {
 			return nil, err
 		}
 	}
 
 	// Ensure cache mounts are configured for any type of image
-	base = mountCaches(ctx, base)
+	base = mountCaches(ctx, base).
+		WithDirectory("/src", src).
+		WithWorkdir("/src")
 
 	return &Golang{Base: base, Src: src, Version: version}, nil
 }
@@ -240,15 +243,24 @@ func (g *Golang) Bench(
 }
 
 // Scans the target project for vulnerabilities using govulncheck
-func (g *Golang) Vulncheck() *File {
-	cmd := []string{"govulncheck", "./...", "|", "tee", "vulncheck.out"}
+func (g *Golang) Vulncheck(ctx context.Context) (string, error) {
+	if g.Version == "1.17" {
+		return "", fmt.Errorf("govulncheck supports go versions 1.18 and higher")
+	}
 
-	return g.Base.
-		WithDirectory("/src", g.Src).
-		WithWorkdir("/src").
-		WithExec([]string{"go", "install", "golang.org/x/vuln/cmd/govulncheck@latest"}).
-		WithExec([]string{"sh", "-c", strings.Join(cmd, " ")}).
-		File("vulncheck.out")
+	ctr := g.Base
+	if _, err := ctr.WithExec([]string{"govulncheck", "--version"}).Sync(ctx); err != nil {
+		tag, err := dag.Github().GetLatestRelease("golang/vuln").Tag(ctx)
+		if err != nil {
+			return "", err
+		}
+
+		ctr = ctr.WithExec([]string{"go", "install", "golang.org/x/vuln/cmd/govulncheck@" + tag})
+	}
+
+	return ctr.
+		WithExec([]string{"govulncheck", "./..."}).
+		Stdout(ctx)
 }
 
 // Lint the target project using golangci-lint
