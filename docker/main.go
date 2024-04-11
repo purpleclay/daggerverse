@@ -17,12 +17,13 @@ type Docker struct {
 	Auth *DockerAuth
 }
 
-// New initializes the docker dagger module
+// New initializes the docker dagger module. Two options are available
+// if authenticating to a private registry. An explicit `docker login`
+// can be actioned before invoking this module, or dagger can authenticate
+// to the registry if registry authentication details are provided
 //
-// Examples:
-//
-// # Authenticate with a registry in preprarion for publishing a built image
-// $ dagger call --registry ghcr.io --username purpleclay --password env:GITHUB_TOKEN
+// Authenticate with a registry:
+// `dagger call --registry ghcr.io --username purpleclay --password env:GITHUB_TOKEN`
 func New(
 	// the address of the registry to authenticate with
 	// +optional
@@ -74,16 +75,14 @@ type DockerBuild struct {
 
 // Build an image using a Dockerfile. Supports cross-compilation
 //
-// Examples:
+// Build an image using the current directory as the context:
+// `dagger call build --dir .`
 //
-// # Build an image using the current directory as the context
-// $ dagger call build --dir .
+// Build an image using cross-compilation:
+// `dagger call build --dir . --platfrom "linux/amd64,linux/arm64"`
 //
-// # Build an image using cross-compilation
-// $ dagger call build --dir . --platfrom "linux/amd64,linux/arm64"
-//
-// # Build an image using build-args and a build target
-// $ dagger call build --dir . --args "VERSION=0.1.0" --target debug
+// Build an image using build-args and a build target:
+// `dagger call build --dir . --args "VERSION=0.1.0" --target debug`
 func (d *Docker) Build(
 	// the path to a directory that will be used as the docker context
 	// +required
@@ -135,10 +134,7 @@ func (d *Docker) Build(
 
 // Save the built image as a tarball ready for exporting
 //
-// Examples:
-//
-// # Save the tarball with the given name
-// $ dagger call build --dir . save --name awesome_service
+// `dagger call build --dir . save --name awesome_service`
 func (d *DockerBuild) Save(
 	ctx context.Context,
 	// a name for the exported tarball, will automatically be suffixed by its platform (e.g. image_linux_amd64.)
@@ -162,15 +158,41 @@ func (d *DockerBuild) Save(
 	return dir
 }
 
+// Retrieves a built image for a given platform
+//
+// `dagger call build --dir . image`
+//
+// Cherry-pick a single image from cross compilation:
+// `dagger call build --dir . --platform "linux/amd64,linux/arm64" image --platform linux/arm64`
+func (d *DockerBuild) Image(
+	ctx context.Context,
+	// the platform of the docker image to return
+	// +optional
+	// +default="linux/amd64"
+	platform Platform) (*Container, error) {
+
+	// Only exists currently as maps are not supported
+	for _, build := range d.Builds {
+		pform, err := build.Platform(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		if pform == platform {
+			return build, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no built image exists for platform '%s'", platform)
+}
+
 // Publish the built image to a target registry
 //
-// Examples:
+// Publish a built image to the ttl.sh registry:
+// `dagger call build --dir . publish --ref ttl.sh/purpleclay-test`
 //
-// # Publish a built image to the ttl.sh registry
-// $ dagger call build --dir . publish --ref ttl.sh/purpleclay-test
-//
-// # Publish a cross-compiled image to the ttl.sh registry with multiple tags
-// $ dagger call build --dir . --platform "linux/amd64,linux/arm64" publish --ref ttl.sh/purpleclay-test --tags "latest,0.1.0"
+// Publish a cross-compiled image to the ttl.sh registry with multiple tags:
+// `dagger call build --dir . --platform "linux/amd64,linux/arm64" publish --ref ttl.sh/purpleclay-test --tags "latest,0.1.0"`
 func (d *DockerBuild) Publish(
 	ctx context.Context,
 	// a fully qualified image reference without tags
