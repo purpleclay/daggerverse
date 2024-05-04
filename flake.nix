@@ -19,7 +19,7 @@
           buildInputs = [
             dagger.packages.${system}.dagger
             git
-            go
+            go_1_21
           ];
         };
       }
