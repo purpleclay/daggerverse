@@ -2,18 +2,22 @@
 *
 
 # Allow project files
-!.gitignore
-!README.md
-!LICENSE
-!CODE_OF_CONDUCT.md
 !.github/**/*
+!.gitignore
+!CODE_OF_CONDUCT.md
+!dagger.json
+!LICENSE
+!README.md
 
-# Allow Go files (explicitly ignore Dagger files)
+# Allow Nix files
+!.envrc
+!flake.lock
+!flake.nix
+
+# Allow Go files
 !*.go
 !go.sum
 !go.mod
-!go.work
-!dagger.json
 
 # Recurse through sub-directories applying the same patterns
 !*/
