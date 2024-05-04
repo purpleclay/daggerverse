@@ -1,5 +1,6 @@
 {
   "name": "apko",
   "sdk": "go",
-  "engineVersion": "v0.10.3"
+  "source": ".",
+  "engineVersion": "v0.11.2"
 }
