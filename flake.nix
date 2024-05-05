@@ -1,5 +1,5 @@
 {
-  description = "Semantic versioning without any config";
+  description = "Welcome to the Daggerverse! Dagger functions to streamline your CI";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
@@ -19,7 +19,7 @@
           buildInputs = [
             dagger.packages.${system}.dagger
             git
-            go_1_21
+            go
           ];
         };
       }
