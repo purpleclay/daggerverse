@@ -80,9 +80,11 @@ func (m *HelmOci) PackagePush(
 	tgz = tgz[strings.LastIndex(tgz, "/")+1 : len(tgz)-1]
 
 	// Extract the registry host needed for logging in
+	registry = strings.TrimPrefix(registry, "oci://")
+
 	idx := strings.Index(registry, "/")
 	if idx == -1 {
-		return "", fmt.Errorf("")
+		return "", fmt.Errorf("malformed registry, could not extract host")
 	}
 	registryHost := registry[:idx]
 
