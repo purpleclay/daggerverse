@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	HelmGithubRepo = "helm/helm"
-	HelmBaseImage  = "alpine/helm"
+	HelmGithubRepo       = "helm/helm"
+	HelmBaseImage        = "alpine/helm"
+	HelmRepositoryConfig = "/root/.config/helm/registry/config.json"
 )
 
 // Helm OCI dagger module
@@ -33,6 +34,10 @@ func New(
 			return nil, err
 		}
 	}
+
+	base = base.WithUser("root").
+		WithoutEnvVariable("HELM_HOME").
+		WithoutEnvVariable("HELM_REGISTRY_CONFIG")
 
 	return &HelmOci{Base: base}, err
 }
@@ -72,7 +77,7 @@ func (m *HelmOci) PackagePush(
 	if err != nil {
 		return "", err
 	}
-	tgz = tgz[strings.LastIndex(tgz, "/"):]
+	tgz = tgz[strings.LastIndex(tgz, "/")+1 : len(tgz)-1]
 
 	// Extract the registry host needed for logging in
 	idx := strings.Index(registry, "/")
@@ -81,11 +86,11 @@ func (m *HelmOci) PackagePush(
 	}
 	registryHost := registry[:idx]
 
+	// https://github.com/dagger/dagger/issues/7274
+	helmAuth := dag.RegistryConfig().WithRegistryAuth(registryHost, username, password).Secret()
+
 	return ctr.
-		WithEnvVariable("REGISTRY", registryHost).
-		WithEnvVariable("REGISTRY_USER", username).
-		WithSecretVariable("REGISTRY_PASSWORD", password).
-		WithExec([]string{"sh", "-c", "helm", "registry", "login", "$REGISTRY", "-u", "$REGISTRY_USER", "-p", "$REGISTRY_PASSWORD"}).
+		WithMountedSecret(HelmRepositoryConfig, helmAuth).
 		WithExec([]string{"push", tgz, fmt.Sprintf("oci://%s", registry)}).
 		Stdout(ctx)
 }

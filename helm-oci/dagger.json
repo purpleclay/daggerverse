@@ -3,6 +3,10 @@
   "sdk": "go",
   "dependencies": [
     {
+      "name": "registry-config",
+      "source": "github.com/sagikazarmark/daggerverse/registry-config@16d0620e6b294d49b5e929f1540509b2fd361a80"
+    },
+    {
       "name": "github",
       "source": "github.com/jedevc/daggerverse/github@b2b06917e338519a04404347a105a7c3bb316472"
     }
