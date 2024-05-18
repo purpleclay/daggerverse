@@ -68,7 +68,6 @@ func (m *HelmOci) PackagePush(
 	// +required
 	password *Secret,
 ) (string, error) {
-
 	ctr := m.Base.
 		WithMountedDirectory("/work", chart).
 		WithWorkdir("/work")
@@ -108,8 +107,8 @@ func (m *HelmOci) Lint(
 	strict bool,
 	// print only warnings and errors
 	// +optional
-	quiet bool) (string, error) {
-
+	quiet bool,
+) (string, error) {
 	cmd := []string{"lint", "."}
 
 	if strict {

@@ -3,9 +3,10 @@ package main
 
 import (
 	"context"
-	"dagger/apko/internal/dagger"
 	"fmt"
 	"strings"
+
+	"dagger/apko/internal/dagger"
 
 	"chainguard.dev/apko/pkg/build/types"
 	"gopkg.in/yaml.v3"
@@ -24,7 +25,8 @@ type ApkoConfig struct {
 func (a *Apko) Load(
 	// the path to the apko configuration file
 	// +required
-	cfg *File) *ApkoConfig {
+	cfg *File,
+) *ApkoConfig {
 	return &ApkoConfig{Cfg: cfg}
 }
 

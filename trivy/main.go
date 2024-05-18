@@ -6,9 +6,10 @@ package main
 
 import (
 	"context"
-	"dagger/trivy/internal/dagger"
 	"fmt"
 	"strconv"
+
+	"dagger/trivy/internal/dagger"
 )
 
 const (
@@ -93,7 +94,6 @@ func New(
 	// +optional
 	ignoreFile *File,
 ) (*Trivy, error) {
-
 	var err error
 	if base == nil {
 		base, err = defaultImage(ctx)
@@ -193,7 +193,8 @@ func (t *Trivy) Image(
 	username string,
 	// the types of vulnerabilities to scan for (os,library)
 	// +optional
-	vulnType string) (string, error) {
+	vulnType string,
+) (string, error) {
 	cmd := []string{"image", ref}
 
 	sargs := scanArgs{
@@ -320,7 +321,8 @@ func (t *Trivy) Filesystem(
 	template string,
 	// the types of vulnerabilities to scan for (os,library)
 	// +optional
-	vulnType string) (string, error) {
+	vulnType string,
+) (string, error) {
 	cmd := []string{"filesystem", "."}
 
 	sargs := scanArgs{

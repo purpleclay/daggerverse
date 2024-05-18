@@ -15,8 +15,9 @@ package main
 
 import (
 	"context"
-	"dagger/nsv/internal/dagger"
 	"fmt"
+
+	"dagger/nsv/internal/dagger"
 )
 
 // NSV dagger module
@@ -34,7 +35,8 @@ type Nsv struct {
 func New(
 	// a path to a directory containing the source code
 	// +required
-	src *Directory) *Nsv {
+	src *Directory,
+) *Nsv {
 	return &Nsv{Base: base(), Src: src}
 }
 
@@ -118,7 +120,8 @@ func (n *Nsv) Tag(
 	gpgPassphrase *dagger.Secret,
 	// a base64 encoded GPG private key (armored) used for signing the tag
 	// +optional
-	gpgPrivateKey *dagger.Secret) (string, error) {
+	gpgPrivateKey *dagger.Secret,
+) (string, error) {
 	cmd := []string{"tag"}
 	if show {
 		cmd = append(cmd, "--show", fmt.Sprintf("--pretty=%s", pretty))

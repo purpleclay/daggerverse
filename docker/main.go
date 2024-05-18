@@ -5,9 +5,10 @@ package main
 
 import (
 	"context"
-	"dagger/docker/internal/dagger"
 	"fmt"
 	"strings"
+
+	"dagger/docker/internal/dagger"
 )
 
 // Docker dagger module
@@ -100,7 +101,8 @@ func (d *Docker) Build(
 	// a list of target platforms for cross-compilation
 	// +optional
 	// +default=["linux/amd64"]
-	platform []Platform) *DockerBuild {
+	platform []Platform,
+) *DockerBuild {
 	var buildArgs []dagger.BuildArg
 	if len(args) > 0 {
 		for _, arg := range args {
@@ -169,8 +171,8 @@ func (d *DockerBuild) Image(
 	// the platform of the docker image to return
 	// +optional
 	// +default="linux/amd64"
-	platform Platform) (*Container, error) {
-
+	platform Platform,
+) (*Container, error) {
 	// Only exists currently as maps are not supported
 	for _, build := range d.Builds {
 		pform, err := build.Platform(ctx)
@@ -201,7 +203,8 @@ func (d *DockerBuild) Publish(
 	// a list of tags that should be published with the image
 	// +optional
 	// +default=["latest"]
-	tags []string) (string, error) {
+	tags []string,
+) (string, error) {
 	// Sanitise the ref, stripping off any tags that may have accidentally been included
 	if strings.LastIndex(ref, ":") > -1 {
 		ref = ref[:strings.LastIndex(ref, ":")]

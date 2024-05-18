@@ -80,7 +80,8 @@ func (p *Ponysay) Say(
 	// give the pony something fun to say
 	// +optional
 	// +default="Dagger is Awesome!"
-	msg string) (string, error) {
+	msg string,
+) (string, error) {
 	return p.Base.
 		WithExec([]string{msg}).
 		Stdout(ctx)
