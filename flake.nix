@@ -20,6 +20,7 @@
             dagger.packages.${system}.dagger
             git
             go
+            gofumpt
           ];
         };
       }
