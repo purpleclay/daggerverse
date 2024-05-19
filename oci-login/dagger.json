@@ -1,0 +1,5 @@
+{
+  "name": "oci-login",
+  "sdk": "go",
+  "engineVersion": "v0.11.4"
+}
