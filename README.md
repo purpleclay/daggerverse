@@ -7,5 +7,6 @@ Welcome to the Daggerverse! Browse the collection of Dagger functions on offer, 
 - [Golang](https://daggerverse.dev/mod/github.com/purpleclay/daggerverse/golang): Build, test and scan your go project for vulnerabilities.
 - [Helm-OCI](https://daggerverse.dev/mod/github.com/purpleclay/daggerverse/helm-oci): A lightweight wrapper around Helm OCI.
 - [NSV](https://daggerverse.dev/mod/github.com/purpleclay/daggerverse/nsv): Semantic versioning without any config.
+- [OCI Login](https://daggerverse.dev/mod/github.com/purpleclay/daggerverse/oci-login): Create an OCI registry authentication file for secure authentication
 - [Ponysay](https://daggerverse.dev/mod/github.com/purpleclay/daggerverse/ponysay): Let's get a Pony to say something fun.
 - [Trivy](https://daggerverse.dev/mod/github.com/purpleclay/daggerverse/trivy): Scan container images and the filesystem for vulnerabilities.
