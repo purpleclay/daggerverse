@@ -47,10 +47,7 @@ func New() *OciLogin {
 // Configure credentials for authenticating to an image registry. Can be chained to
 // configure multiple credentials in a single pass
 //
-//	`dagger call -m github.com/purpleclay/daggerverse/oci-login with-auth \
-//	  --hostname docker.io \
-//	  --username user \
-//	  --password env:REGISTRY_PASSWORD`
+// `dagger call -m github.com/purpleclay/daggerverse/oci-login with-auth --hostname docker.io --username user --password env:REGISTRY_PASSWORD`
 func (m *OciLogin) WithAuth(
 	ctx context.Context,
 	// the hostname (e.g. docker.io) or namespace (e.g. quay.io/user/image) of the
@@ -79,11 +76,11 @@ func (m *OciLogin) WithAuth(
 
 // Generates a JSON representation of the current OCI login configuration as a file
 //
-//	`dagger call -m github.com/purpleclay/daggerverse/oci-login with-auth \
-//	  --hostname docker.io \
-//	  --username user \
-//	  --password env:REGISTRY_PASSWORD \
-//	  as-config`
+//	 `dagger call -m github.com/purpleclay/daggerverse/oci-login with-auth \
+//		  --hostname docker.io \
+//		  --username user \
+//		  --password env:REGISTRY_PASSWORD \
+//		  as-config`
 func (m *OciLogin) AsConfig() *File {
 	config, _ := json.Marshal(m.Config)
 
