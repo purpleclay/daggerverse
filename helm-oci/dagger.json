@@ -3,8 +3,8 @@
   "sdk": "go",
   "dependencies": [
     {
-      "name": "registry-config",
-      "source": "github.com/sagikazarmark/daggerverse/registry-config@16d0620e6b294d49b5e929f1540509b2fd361a80"
+      "name": "oci-login",
+      "source": "github.com/purpleclay/daggerverse/oci-login@23dbe395ffcda9540daf6fae630847dd5bafb3cf"
     },
     {
       "name": "github",
@@ -12,5 +12,5 @@
     }
   ],
   "source": ".",
-  "engineVersion": "v0.11.2"
+  "engineVersion": "v0.11.4"
 }

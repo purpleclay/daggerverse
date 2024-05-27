@@ -5,12 +5,18 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"dagger/helm-oci/internal/dagger"
+
+	"helm.sh/helm/v3/pkg/chart"
+	"sigs.k8s.io/yaml"
 )
 
 const (
 	HelmGithubRepo       = "helm/helm"
 	HelmBaseImage        = "alpine/helm"
 	HelmRepositoryConfig = "/root/.config/helm/registry/config.json"
+	HelmWorkDir          = "/work"
 )
 
 // Helm OCI dagger module
@@ -52,48 +58,144 @@ func defaultImage(ctx context.Context) (*Container, error) {
 		From(fmt.Sprintf("%s:%s", HelmBaseImage, tag[1:])), nil
 }
 
-// Packages a Helm chart and publishes it to an OCI registry
-func (m *HelmOci) PackagePush(
+// Packages a chart into a versioned chart archive file using metadata defined within
+// the Chart.yaml file. Metadata can be overridden directly with the required flags.
+func (m *HelmOci) Package(
 	ctx context.Context,
 	// a path to the directory containing the Chart.yaml file
 	// +required
-	chart *Directory,
+	dir *Directory,
+	// override the semantic version of the application this chart deploys
+	// +optional
+	appVersion string,
+	// override the semantic version of the chart
+	// +optional
+	version string,
+) (*File, error) {
+	chart, err := resolveChartMetadata(ctx, dir)
+	if err != nil {
+		return nil, err
+	}
+
+	appVer := chart.AppVersion
+	if appVersion != "" {
+		appVer = appVersion
+	}
+
+	ver := chart.Version
+	if version != "" {
+		ver = version
+	}
+
+	return m.Base.
+		WithMountedDirectory(HelmWorkDir, dir).
+		WithWorkdir(HelmWorkDir).
+		WithExec([]string{
+			"package",
+			".",
+			"--app-version",
+			appVer,
+			"--version",
+			ver,
+		}).
+		File(fmt.Sprintf("%s-%s.tgz", chart.Name, ver)), nil
+}
+
+func resolveChartMetadata(ctx context.Context, dir *Directory) (*chart.Metadata, error) {
+	manifest, err := dir.File("Chart.yaml").Contents(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	metadata := &chart.Metadata{}
+	if err := yaml.Unmarshal([]byte(manifest), metadata); err != nil {
+		return nil, err
+	}
+
+	return metadata, nil
+}
+
+// Push a packaged chart to a chart registry
+func (m *HelmOci) Push(
+	ctx context.Context,
+	// the packaged helm chart
+	// +required
+	pkg *File,
 	// the OCI registry to publish the chart to, should include full path without chart name
 	// +required
 	registry string,
 	// the username for authenticating with the registry
-	// +required
+	// +optional
 	username string,
 	// the password for authenticating with the registry
-	// +required
+	// +optional
 	password *Secret,
 ) (string, error) {
-	ctr := m.Base.
-		WithMountedDirectory("/work", chart).
-		WithWorkdir("/work")
-
-	tgz, err := ctr.WithExec([]string{"package", "."}).Stdout(ctx)
+	regHost, err := extractRegistryHost(registry)
 	if err != nil {
 		return "", err
 	}
-	tgz = tgz[strings.LastIndex(tgz, "/")+1 : len(tgz)-1]
+	ctr := m.Base
 
-	// Extract the registry host needed for logging in
-	registry = strings.TrimPrefix(registry, "oci://")
+	if username != "" && password != nil {
+		helmAuth := dag.OciLogin().WithAuth(regHost, username, password).AsSecret(dagger.OciLoginAsSecretOpts{})
+		ctr = ctr.WithMountedSecret(HelmRepositoryConfig, helmAuth)
+	}
 
-	idx := strings.Index(registry, "/")
+	reg := registry
+	if !strings.HasPrefix(reg, "oci://") {
+		reg = fmt.Sprintf("oci://%s", reg)
+	}
+
+	tgzName, err := pkg.Name(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return ctr.
+		WithMountedFile(tgzName, pkg).
+		WithExec([]string{"push", tgzName, reg}).
+		Stdout(ctx)
+}
+
+func extractRegistryHost(registry string) (string, error) {
+	reg := strings.TrimPrefix(registry, "oci://")
+	idx := strings.Index(reg, "/")
 	if idx == -1 {
 		return "", fmt.Errorf("malformed registry, could not extract host")
 	}
-	registryHost := registry[:idx]
+	return reg[:idx], nil
+}
 
-	// https://github.com/dagger/dagger/issues/7274
-	helmAuth := dag.RegistryConfig().WithRegistryAuth(registryHost, username, password).Secret()
+// Packages a Helm chart and publishes it to an OCI registry. Semantic versioning for the chart
+// is obtained directly from the Chart.yaml file
+func (m *HelmOci) PackagePush(
+	ctx context.Context,
+	// a path to the directory containing the Chart.yaml file
+	// +required
+	dir *Directory,
+	// override the semantic version of the application this chart deploys
+	// +optional
+	appVersion string,
+	// override the semantic version of the chart
+	// +optional
+	version string,
+	// the OCI registry to publish the chart to, should include full path without chart name
+	// +required
+	registry string,
+	// the username for authenticating with the registry
+	// +optional
+	username string,
+	// the password for authenticating with the registry
+	// +optional
+	password *Secret,
+) (string, error) {
+	pkg, err := m.Package(ctx, dir, appVersion, version)
+	if err != nil {
+		return "", err
+	}
 
-	return ctr.
-		WithMountedSecret(HelmRepositoryConfig, helmAuth).
-		WithExec([]string{"push", tgz, fmt.Sprintf("oci://%s", registry)}).
-		Stdout(ctx)
+	return m.Push(ctx, pkg, registry, username, password)
 }
 
 // Lints a Helm chart
@@ -101,7 +203,7 @@ func (m *HelmOci) Lint(
 	ctx context.Context,
 	// a path to the directory containing the Chart.yaml file
 	// +required
-	chart *Directory,
+	dir *Directory,
 	// fail on any linting errors by returning a non zero exit code
 	// +optional
 	strict bool,
@@ -120,8 +222,8 @@ func (m *HelmOci) Lint(
 	}
 
 	return m.Base.
-		WithMountedDirectory("/work", chart).
-		WithWorkdir("/work").
+		WithMountedDirectory(HelmWorkDir, dir).
+		WithWorkdir(HelmWorkDir).
 		WithExec(cmd).
 		Stdout(ctx)
 }
