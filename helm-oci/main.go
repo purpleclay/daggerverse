@@ -155,7 +155,7 @@ func (m *HelmOci) Push(
 	return ctr.
 		WithMountedFile(tgzName, pkg).
 		WithExec([]string{"push", tgzName, reg}).
-		Stdout(ctx)
+		Stderr(ctx)
 }
 
 func extractRegistryHost(registry string) (string, error) {
