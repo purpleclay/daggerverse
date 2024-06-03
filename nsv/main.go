@@ -197,7 +197,6 @@ func (n *Nsv) Tag(
 		WithEnvVariable("TINI_SUBREAPER", "1").
 		WithDirectory("/src", n.Src).
 		WithWorkdir("/src").
-		// WithEnvVariable("DAGGER_CACHE_BUSTER", time.Now().Format(time.RFC3339Nano)).
 		WithExec(cmd).
 		Stdout(ctx)
 }
