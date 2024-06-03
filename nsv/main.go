@@ -16,47 +16,60 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"dagger/nsv/internal/dagger"
 )
 
+const (
+	NsvGithubRepo = "purpleclay/nsv"
+	NsvBaseImage  = "ghcr.io/purpleclay/nsv"
+)
+
 // NSV dagger module
 type Nsv struct {
-	// Base is the image used by all nsv dagger functions
+	// a custom base image containing an installation of nsv
 	// +private
 	Base *Container
 
-	// Src is a directory that contains the projects source code
+	// a path to a directory containing the projects source code
 	// +private
 	Src *Directory
 }
 
-// New initializes the NSV dagger module
+// Initializes the NSV dagger module
 func New(
-	// a path to a directory containing the source code
+	ctx context.Context,
+	// a custom base image containing an installation of nsv
+	// +optional
+	base *Container,
+	// a path to a directory containing the projects source code
 	// +required
 	src *Directory,
-) *Nsv {
-	return &Nsv{Base: base(), Src: src}
+) (*Nsv, error) {
+	var err error
+	if base == nil {
+		base, err = defaultImage(ctx)
+	} else {
+		if _, err = base.WithExec([]string{"version"}).Sync(ctx); err != nil {
+			return nil, err
+		}
+	}
+
+	return &Nsv{Base: base, Src: src}, nil
 }
 
-func base() *Container {
+func defaultImage(ctx context.Context) (*Container, error) {
+	tag, err := dag.Github().GetLatestRelease(NsvGithubRepo).Tag(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	return dag.Container().
-		From("ghcr.io/purpleclay/nsv:v0.7.0")
+		From(fmt.Sprintf("%s:%s", NsvBaseImage, tag)), nil
 }
 
 // Prints the next semantic version based on the commit history of your repository
-//
-// Examples:
-//
-// # Print the next semantic version
-// $ dagger call next
-//
-// # Print the next semantic version for multiple monorepo sub-projects
-// $ dagger call next --paths project1,project2
-//
-// # Print the next semantic version and show how the version was calculated
-// $ dagger call next --show
 func (n *Nsv) Next(
 	ctx context.Context,
 	// a list of relative paths of projects to analyze
@@ -71,15 +84,21 @@ func (n *Nsv) Next(
 	// +optional
 	// +default="full"
 	pretty string,
+	// a comma separated list of conventional commit prefixes for triggering a
+	// major semantic version increment
+	// +optional
+	majorPrefixes []string,
+	// a comma separated list of conventional commit prefixes for triggering a
+	// minor semantic version increment
+	// +optional
+	minorPrefixes []string,
+	// a comma separated list of conventional commit prefixes for triggering a
+	// patch semantic version increment
+	// +optional
+	patchPrefixes []string,
 ) (string, error) {
 	cmd := []string{"next"}
-	if show {
-		cmd = append(cmd, "--show", fmt.Sprintf("--pretty=%s", pretty))
-	}
-
-	if len(paths) > 0 {
-		cmd = append(cmd, paths...)
-	}
+	cmd = append(cmd, formatArgs(majorPrefixes, minorPrefixes, patchPrefixes, pretty, show, paths)...)
 
 	return n.Base.
 		WithEnvVariable("TINI_SUBREAPER", "1").
@@ -89,18 +108,38 @@ func (n *Nsv) Next(
 		Stdout(ctx)
 }
 
+func formatArgs(
+	majorPrefixes, minorPrefixes, patchPrefixes []string,
+	pretty string,
+	show bool,
+	paths []string,
+) []string {
+	var args []string
+
+	if show {
+		args = append(args, "--show", fmt.Sprintf("--pretty=%s", pretty))
+	}
+
+	if len(majorPrefixes) > 0 {
+		args = append(args, "--major-prefixes", strings.Join(majorPrefixes, ","))
+	}
+
+	if len(minorPrefixes) > 0 {
+		args = append(args, "--minor-prefixes", strings.Join(majorPrefixes, ","))
+	}
+
+	if len(patchPrefixes) > 0 {
+		args = append(args, "--patch-prefixes", strings.Join(majorPrefixes, ","))
+	}
+
+	if len(paths) > 0 {
+		args = append(args, paths...)
+	}
+
+	return args
+}
+
 // Tags the next semantic version based on the commit history of your repository
-//
-// Examples:
-//
-// # Tag the next semantic version
-// $ dagger call tag
-//
-// # Tag the next semantic version for multiple monorepo sub-projects
-// $ dagger call tag --paths project1,project2
-//
-// # Tag the next semantic version and show how the version was calculated
-// $ dagger call tag --show
 func (n *Nsv) Tag(
 	ctx context.Context,
 	// a list of relative paths of projects to analyze
@@ -115,6 +154,21 @@ func (n *Nsv) Tag(
 	// +optional
 	// +default="full"
 	pretty string,
+	// a custom message for the tag, supports go text templates
+	// +optional
+	message string,
+	// a comma separated list of conventional commit prefixes for triggering a
+	// major semantic version increment
+	// +optional
+	majorPrefixes []string,
+	// a comma separated list of conventional commit prefixes for triggering a
+	// minor semantic version increment
+	// +optional
+	minorPrefixes []string,
+	// a comma separated list of conventional commit prefixes for triggering a
+	// patch semantic version increment
+	// +optional
+	patchPrefixes []string,
 	// an optional passphrase to unlock the GPG private key used for signing the tag
 	// +optional
 	gpgPassphrase *dagger.Secret,
@@ -123,13 +177,11 @@ func (n *Nsv) Tag(
 	gpgPrivateKey *dagger.Secret,
 ) (string, error) {
 	cmd := []string{"tag"}
-	if show {
-		cmd = append(cmd, "--show", fmt.Sprintf("--pretty=%s", pretty))
+	if message != "" {
+		cmd = append(cmd, "--message", message)
 	}
 
-	if len(paths) > 0 {
-		cmd = append(cmd, paths...)
-	}
+	cmd = append(cmd, formatArgs(majorPrefixes, minorPrefixes, patchPrefixes, pretty, show, paths)...)
 
 	ctr := n.Base
 	if gpgPrivateKey != nil {
@@ -145,6 +197,7 @@ func (n *Nsv) Tag(
 		WithEnvVariable("TINI_SUBREAPER", "1").
 		WithDirectory("/src", n.Src).
 		WithWorkdir("/src").
+		// WithEnvVariable("DAGGER_CACHE_BUSTER", time.Now().Format(time.RFC3339Nano)).
 		WithExec(cmd).
 		Stdout(ctx)
 }
