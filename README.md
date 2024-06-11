@@ -10,3 +10,4 @@ Welcome to the Daggerverse! Browse the collection of Dagger functions on offer, 
 - [OCI Login](https://daggerverse.dev/mod/github.com/purpleclay/daggerverse/oci-login): Create an OCI registry authentication file for secure authentication
 - [Ponysay](https://daggerverse.dev/mod/github.com/purpleclay/daggerverse/ponysay): Let's get a Pony to say something fun.
 - [Trivy](https://daggerverse.dev/mod/github.com/purpleclay/daggerverse/trivy): Scan container images and the filesystem for vulnerabilities.
+- [ShellCheck](https://daggerverse.dev/mod/github.com/purpleclay/daggerverse/shellcheck): A static analysis tool for your shell scripts
