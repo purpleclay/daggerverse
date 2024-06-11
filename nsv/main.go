@@ -72,18 +72,9 @@ func defaultImage(ctx context.Context) (*Container, error) {
 // Prints the next semantic version based on the commit history of your repository
 func (n *Nsv) Next(
 	ctx context.Context,
-	// a list of relative paths of projects to analyze
+	// provide a go template for changing the default version format
 	// +optional
-	paths []string,
-	// show how the next semantic version was calculated
-	// +optional
-	show bool,
-	// pretty-print the output of the next semantic version in a given format.
-	// Supported formats are (full, compact). Must be used in conjunction with
-	// the show flag
-	// +optional
-	// +default="full"
-	pretty string,
+	format string,
 	// a comma separated list of conventional commit prefixes for triggering a
 	// major semantic version increment
 	// +optional
@@ -96,9 +87,21 @@ func (n *Nsv) Next(
 	// patch semantic version increment
 	// +optional
 	patchPrefixes []string,
+	// a list of relative paths of projects to analyze
+	// +optional
+	paths []string,
+	// pretty-print the output of the next semantic version in a given format.
+	// Supported formats are (full, compact). Must be used in conjunction with
+	// the show flag
+	// +optional
+	// +default="full"
+	pretty string,
+	// show how the next semantic version was calculated
+	// +optional
+	show bool,
 ) (string, error) {
 	cmd := []string{"next"}
-	cmd = append(cmd, formatArgs(majorPrefixes, minorPrefixes, patchPrefixes, pretty, show, paths)...)
+	cmd = append(cmd, formatArgs(format, majorPrefixes, minorPrefixes, patchPrefixes, pretty, show, paths)...)
 
 	return n.Base.
 		WithEnvVariable("TINI_SUBREAPER", "1").
@@ -109,12 +112,17 @@ func (n *Nsv) Next(
 }
 
 func formatArgs(
+	format string,
 	majorPrefixes, minorPrefixes, patchPrefixes []string,
 	pretty string,
 	show bool,
 	paths []string,
 ) []string {
 	var args []string
+
+	if format != "" {
+		args = append(args, "--format", format)
+	}
 
 	if show {
 		args = append(args, "--show", fmt.Sprintf("--pretty=%s", pretty))
@@ -142,25 +150,22 @@ func formatArgs(
 // Tags the next semantic version based on the commit history of your repository
 func (n *Nsv) Tag(
 	ctx context.Context,
-	// a list of relative paths of projects to analyze
+	// provide a go template for changing the default version format
 	// +optional
-	paths []string,
-	// show how the next semantic version was calculated
+	format string,
+	// an optional passphrase to unlock the GPG private key used for signing the tag
 	// +optional
-	show bool,
-	// pretty-print the output of the next semantic version in a given format.
-	// Supported formats are (full, compact). Must be used in conjunction with
-	// the show flag
+	gpgPassphrase *dagger.Secret,
+	// a base64 encoded GPG private key (armored) used for signing the tag
 	// +optional
-	// +default="full"
-	pretty string,
-	// a custom message for the tag, supports go text templates
-	// +optional
-	message string,
+	gpgPrivateKey *dagger.Secret,
 	// a comma separated list of conventional commit prefixes for triggering a
 	// major semantic version increment
 	// +optional
 	majorPrefixes []string,
+	// a custom message for the tag, supports go text templates
+	// +optional
+	message string,
 	// a comma separated list of conventional commit prefixes for triggering a
 	// minor semantic version increment
 	// +optional
@@ -169,19 +174,25 @@ func (n *Nsv) Tag(
 	// patch semantic version increment
 	// +optional
 	patchPrefixes []string,
-	// an optional passphrase to unlock the GPG private key used for signing the tag
+	// a list of relative paths of projects to analyze
 	// +optional
-	gpgPassphrase *dagger.Secret,
-	// a base64 encoded GPG private key (armored) used for signing the tag
+	paths []string,
+	// pretty-print the output of the next semantic version in a given format.
+	// Supported formats are (full, compact). Must be used in conjunction with
+	// the show flag
 	// +optional
-	gpgPrivateKey *dagger.Secret,
+	// +default="full"
+	pretty string,
+	// show how the next semantic version was calculated
+	// +optional
+	show bool,
 ) (string, error) {
 	cmd := []string{"tag"}
 	if message != "" {
 		cmd = append(cmd, "--message", message)
 	}
 
-	cmd = append(cmd, formatArgs(majorPrefixes, minorPrefixes, patchPrefixes, pretty, show, paths)...)
+	cmd = append(cmd, formatArgs(format, majorPrefixes, minorPrefixes, patchPrefixes, pretty, show, paths)...)
 
 	ctr := n.Base
 	if gpgPrivateKey != nil {
