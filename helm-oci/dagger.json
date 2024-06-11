@@ -3,14 +3,14 @@
   "sdk": "go",
   "dependencies": [
     {
-      "name": "oci-login",
-      "source": "github.com/purpleclay/daggerverse/oci-login@23dbe395ffcda9540daf6fae630847dd5bafb3cf"
-    },
-    {
       "name": "github",
       "source": "github.com/jedevc/daggerverse/github@b2b06917e338519a04404347a105a7c3bb316472"
+    },
+    {
+      "name": "oci-login",
+      "source": "github.com/purpleclay/daggerverse/oci-login@23dbe395ffcda9540daf6fae630847dd5bafb3cf"
     }
   ],
   "source": ".",
-  "engineVersion": "v0.11.4"
+  "engineVersion": "v0.11.6"
 }
