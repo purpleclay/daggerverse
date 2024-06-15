@@ -22,9 +22,6 @@ type Docker struct {
 // if authenticating to a private registry. An explicit `docker login`
 // can be actioned before invoking this module, or dagger can authenticate
 // to the registry if registry authentication details are provided
-//
-// Authenticate with a registry:
-// `dagger call --registry ghcr.io --username purpleclay --password env:GITHUB_TOKEN`
 func New(
 	// the address of the registry to authenticate with
 	// +optional
@@ -74,16 +71,7 @@ type DockerBuild struct {
 	Auth *DockerAuth
 }
 
-// Build an image using a Dockerfile. Supports cross-compilation
-//
-// Build an image using the current directory as the context:
-// `dagger call build --dir .`
-//
-// Build an image using cross-compilation:
-// `dagger call build --dir . --platfrom "linux/amd64,linux/arm64"`
-//
-// Build an image using build-args and a build target:
-// `dagger call build --dir . --args "VERSION=0.1.0" --target debug`
+// Build an image using a Dockerfile. Supports multi-platform images
 func (d *Docker) Build(
 	// the path to a directory that will be used as the docker context
 	// +required
@@ -134,22 +122,22 @@ func (d *Docker) Build(
 	return &DockerBuild{Builds: builds, Auth: d.Auth}
 }
 
-// Save the built image as a tarball ready for exporting
-//
-// `dagger call build --dir . save --name awesome_service`
+// Save the built image as a tarball ready for exporting. A tarball will be generated using
+// the following convention `<name>@<platform>.tar` (e.g. image~linux-amd64.tar)
 func (d *DockerBuild) Save(
 	ctx context.Context,
-	// a name for the exported tarball, will automatically be suffixed by its platform (e.g. image_linux_amd64.)
+	// a name for the exported tarball
 	// +optional
 	// +default="image"
 	name string,
 ) *Directory {
-	dir := dag.Directory()
+	imgName := strings.ReplaceAll(name, " ", "-")
 
+	dir := dag.Directory()
 	for _, build := range d.Builds {
 		platform, _ := build.Platform(ctx)
 
-		dir = dir.WithFile(fmt.Sprintf("%s_%s.tar", name, strings.Replace(string(platform), "/", "_", 1)),
+		dir = dir.WithFile(fmt.Sprintf("%s@%s.tar", imgName, strings.Replace(string(platform), "/", "_", 1)),
 			build.AsTarball(dagger.ContainerAsTarballOpts{
 				ForcedCompression: dagger.Gzip,
 			}),
@@ -160,12 +148,7 @@ func (d *DockerBuild) Save(
 	return dir
 }
 
-// Retrieves a built image for a given platform
-//
-// `dagger call build --dir . image`
-//
-// Cherry-pick a single image from cross compilation:
-// `dagger call build --dir . --platform "linux/amd64,linux/arm64" image --platform linux/arm64`
+// Retrieves a built image for a given platform as a container
 func (d *DockerBuild) Image(
 	ctx context.Context,
 	// the platform of the docker image to return
@@ -188,13 +171,7 @@ func (d *DockerBuild) Image(
 	return nil, fmt.Errorf("no built image exists for platform '%s'", platform)
 }
 
-// Publish the built image to a target registry
-//
-// Publish a built image to the ttl.sh registry:
-// `dagger call build --dir . publish --ref ttl.sh/purpleclay-test`
-//
-// Publish a cross-compiled image to the ttl.sh registry with multiple tags:
-// `dagger call build --dir . --platform "linux/amd64,linux/arm64" publish --ref ttl.sh/purpleclay-test --tags "latest,0.1.0"`
+// Publish the built image to a target registry. Supports publishing of mulit-platform images
 func (d *DockerBuild) Publish(
 	ctx context.Context,
 	// a fully qualified image reference without tags
