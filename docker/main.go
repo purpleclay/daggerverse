@@ -137,7 +137,7 @@ func (d *DockerBuild) Save(
 	for _, build := range d.Builds {
 		platform, _ := build.Platform(ctx)
 
-		dir = dir.WithFile(fmt.Sprintf("%s@%s.tar", imgName, strings.Replace(string(platform), "/", "_", 1)),
+		dir = dir.WithFile(fmt.Sprintf("%s@%s.tar", imgName, strings.Replace(string(platform), "/", "-", 1)),
 			build.AsTarball(dagger.ContainerAsTarballOpts{
 				ForcedCompression: dagger.Gzip,
 			}),
