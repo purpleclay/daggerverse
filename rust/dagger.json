@@ -1,0 +1,12 @@
+{
+  "name": "rust",
+  "sdk": "go",
+  "dependencies": [
+    {
+      "name": "github",
+      "source": "github.com/jedevc/daggerverse/github@b2b06917e338519a04404347a105a7c3bb316472"
+    }
+  ],
+  "source": ".",
+  "engineVersion": "v0.11.6"
+}
