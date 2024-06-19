@@ -33,7 +33,7 @@ func New(
 	// a custom base image containing an installation of rust. If no image is provided
 	// the `rust:<LATEST_TAG>-alpine3.20` will be used. The default image will use musl
 	// to support static compilation of Rust binaries. It comes bundled with the following
-	// packages: `cmake`, `build-base`, `libressl-dev`, `musl-dev`, and `pkgconfig`
+	// packages: `cmake`, `build-base`, `libressl-dev`, `musl-dev`, `perl`, and `pkgconfig`
 	// +optional
 	base *Container,
 	// a path to a directory containing the projects source code
@@ -77,6 +77,7 @@ func defaultImage(ctx context.Context) (*Container, error) {
 			"build-base",
 			"libressl-dev",
 			"musl-dev",
+			"perl",
 			"pkgconfig",
 		}).
 		Sync(ctx)
