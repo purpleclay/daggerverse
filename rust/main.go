@@ -30,7 +30,10 @@ type Rust struct {
 // Initializes the rust dagger module
 func New(
 	ctx context.Context,
-	// a custom base image containing an installation of rust
+	// a custom base image containing an installation of rust. If no image is provided
+	// the `rust:<LATEST_TAG>-alpine3.20` will be used. The default image will use musl
+	// to support static compilation of Rust binaries. It comes bundled with the following
+	// packages: `cmake`, `build-base`, `libressl-dev`, `musl-dev`, and `pkgconfig`
 	// +optional
 	base *Container,
 	// a path to a directory containing the projects source code
@@ -66,7 +69,16 @@ func defaultImage(ctx context.Context) (*Container, error) {
 
 	return dag.Container().
 		From(fmt.Sprintf("%s:%s-alpine3.20", RustBaseImage, tag)).
-		WithExec([]string{"apk", "add", "--no-cache", "musl-dev"}).
+		WithExec([]string{
+			"apk",
+			"add",
+			"--no-cache",
+			"cmake",
+			"build-base",
+			"libressl-dev",
+			"musl-dev",
+			"pkgconfig",
+		}).
 		Sync(ctx)
 }
 
@@ -83,7 +95,7 @@ func mountCaches(ctx context.Context, base *Container) *Container {
 // your Rust code
 func (r *Rust) Clippy(
 	ctx context.Context,
-	// d
+	// run clippy on the current crate only and not against its dependencies
 	// +optional
 	noDeps bool,
 ) (string, error) {
