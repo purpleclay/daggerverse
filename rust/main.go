@@ -102,13 +102,36 @@ func (r *Rust) Clippy(
 ) (string, error) {
 	ctr := r.Base
 	if _, err := ctr.WithExec([]string{"cargo", "clippy", "--version"}).Sync(ctx); err != nil {
-		ctr = ctr.WithExec([]string{"rustup", "component", "add", "clippy"})
+		ctr = ctr.WithExec([]string{"rustup", "component", "add", "rustfmt"})
 	}
 
-	cmd := []string{"cargo", "clippy"}
+	cmd := []string{"cargo", "fmt"}
 	if noDeps {
 		cmd = append(cmd, "--no-deps")
 	}
 
 	return ctr.WithExec(cmd).Stderr(ctx)
+}
+
+// Format the code in your Rust project using Rustfmt
+func (r *Rust) Format(ctx context.Context) (*Directory, error) {
+	ctr := r.Base
+	if _, err := ctr.WithExec([]string{"cargo", "fmt", "--version"}).Sync(ctx); err != nil {
+		ctr = ctr.WithExec([]string{"rustup", "component", "add", "rustfmt"})
+	}
+
+	cmd := []string{"cargo", "fmt", "--all"}
+	return ctr.WithExec(cmd).Directory(rustWorkDir), nil
+}
+
+// Checks the format of the code in your Rust project using Rustfmt. Fails
+// if any formatting issues are detected
+func (r *Rust) FormatCheck(ctx context.Context) (string, error) {
+	ctr := r.Base
+	if _, err := ctr.WithExec([]string{"cargo", "fmt", "--version"}).Sync(ctx); err != nil {
+		ctr = ctr.WithExec([]string{"rustup", "component", "add", "rustfmt"})
+	}
+
+	cmd := []string{"cargo", "fmt", "--all", "--", "--check"}
+	return ctr.WithExec(cmd).Stdout(ctx)
 }
