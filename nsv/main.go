@@ -133,11 +133,11 @@ func formatArgs(
 	}
 
 	if len(minorPrefixes) > 0 {
-		args = append(args, "--minor-prefixes", strings.Join(majorPrefixes, ","))
+		args = append(args, "--minor-prefixes", strings.Join(minorPrefixes, ","))
 	}
 
 	if len(patchPrefixes) > 0 {
-		args = append(args, "--patch-prefixes", strings.Join(majorPrefixes, ","))
+		args = append(args, "--patch-prefixes", strings.Join(patchPrefixes, ","))
 	}
 
 	if len(paths) > 0 {
