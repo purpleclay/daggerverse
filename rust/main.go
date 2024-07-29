@@ -102,10 +102,10 @@ func (r *Rust) Clippy(
 ) (string, error) {
 	ctr := r.Base
 	if _, err := ctr.WithExec([]string{"cargo", "clippy", "--version"}).Sync(ctx); err != nil {
-		ctr = ctr.WithExec([]string{"rustup", "component", "add", "rustfmt"})
+		ctr = ctr.WithExec([]string{"rustup", "component", "add", "clippy"})
 	}
 
-	cmd := []string{"cargo", "fmt"}
+	cmd := []string{"cargo", "clippy"}
 	if noDeps {
 		cmd = append(cmd, "--no-deps")
 	}
