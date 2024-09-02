@@ -22,7 +22,7 @@ const (
 type Trivy struct {
 	// Base is the image used by all trivy dagger functions
 	// +private
-	Base *Container
+	Base *dagger.Container
 	// Identifies whether the experimental YAML format for the
 	// ignore file has been provided. Once this is stable, it
 	// will be loaded automatically
@@ -83,16 +83,16 @@ func New(
 	ctx context.Context,
 	// a custom base image containing an installation of trivy
 	// +optional
-	base *Container,
+	base *dagger.Container,
 	// a trivy configuration file, https://aquasecurity.github.io/trivy/latest/docs/configuration/
 	// Will be mounted as trivy.yaml
 	// +optional
-	cfg *File,
+	cfg *dagger.File,
 	// a trivy ignore file for configuring supressions,
 	// https://aquasecurity.github.io/trivy/latest/docs/configuration/filtering/#suppression.
 	// Will be mounted as either .trivyignore or .trivyignore.yaml
 	// +optional
-	ignoreFile *File,
+	ignoreFile *dagger.File,
 ) (*Trivy, error) {
 	var err error
 	if base == nil {
@@ -129,7 +129,7 @@ func New(
 	return &Trivy{Base: base, IgnoreFile: ignoreFilePath}, err
 }
 
-func defaultImage(ctx context.Context) (*Container, error) {
+func defaultImage(ctx context.Context) (*dagger.Container, error) {
 	tag, err := dag.Github().GetLatestRelease("aquasecurity/trivy").Tag(ctx)
 	if err != nil {
 		return nil, err
@@ -250,7 +250,7 @@ func (t *Trivy) ImageLocal(
 	ignoreUnfixed bool,
 	// the path to an exported image tar
 	// +required
-	ref *File,
+	ref *dagger.File,
 	// the types of scanner to execute (vuln,secret)
 	// +optional
 	scanners string,
@@ -300,7 +300,7 @@ func (t *Trivy) Filesystem(
 	ctx context.Context,
 	// the path to directory to scan
 	// +required
-	dir *Directory,
+	dir *dagger.Directory,
 	// the returned exit code when vulnerabilities are detected (0)
 	// +optional
 	exitCode int,

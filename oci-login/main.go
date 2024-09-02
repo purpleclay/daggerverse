@@ -57,7 +57,7 @@ func (m *OciLogin) WithAuth(
 	username string,
 	// the password for the user to authenticate with
 	// +required
-	password *Secret,
+	password *dagger.Secret,
 ) (*OciLogin, error) {
 	passwd, err := password.Plaintext(ctx)
 	if err != nil {
@@ -73,7 +73,7 @@ func (m *OciLogin) WithAuth(
 }
 
 // Generates a JSON representation of the current OCI login configuration as a file
-func (m *OciLogin) AsConfig() *File {
+func (m *OciLogin) AsConfig() *dagger.File {
 	config, _ := json.Marshal(m.Config)
 
 	return dag.Directory().
@@ -87,7 +87,7 @@ func (m *OciLogin) AsSecret(
 	// is the md5 hash of the config
 	// +optional
 	name string,
-) *Secret {
+) *dagger.Secret {
 	config, _ := json.Marshal(m.Config)
 
 	if name == "" {

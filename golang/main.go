@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"dagger/golang/internal/dagger"
 	"fmt"
 	"runtime"
 	"strings"
@@ -29,11 +30,11 @@ const (
 type Golang struct {
 	// Base is the image used by all golang dagger functions, defaults to the bookworm base image
 	// +private
-	Base *Container
+	Base *dagger.Container
 
 	// Src is a directory that contains the projects source code
 	// +private
-	Src *Directory
+	Src *dagger.Directory
 
 	// Version of the go project, defined within the go.mod file
 	// +private
@@ -50,10 +51,10 @@ func New(
 	//
 	// `NOTE:` Any pre-existing entrypoint will be removed, in favour of raw `go` commands
 	// +optional
-	base *Container,
+	base *dagger.Container,
 	// a path to a directory containing the source code
 	// +required
-	src *Directory,
+	src *dagger.Directory,
 ) (*Golang, error) {
 	version, err := inspectModVersion(context.Background(), src)
 	if err != nil {
@@ -77,7 +78,7 @@ func New(
 	return &Golang{Base: base, Src: src, Version: version}, nil
 }
 
-func inspectModVersion(ctx context.Context, src *Directory) (string, error) {
+func inspectModVersion(ctx context.Context, src *dagger.Directory) (string, error) {
 	mod, err := src.File(goMod).Contents(ctx)
 	if err != nil {
 		return "", err
@@ -90,7 +91,7 @@ func inspectModVersion(ctx context.Context, src *Directory) (string, error) {
 	return f.Go.Version, nil
 }
 
-func mountCaches(ctx context.Context, base *Container) *Container {
+func mountCaches(ctx context.Context, base *dagger.Container) *dagger.Container {
 	goCacheEnv, _ := base.WithExec([]string{"go", "env", "GOCACHE"}).Stdout(ctx)
 	goModCacheEnv, _ := base.WithExec([]string{"go", "env", "GOMODCACHE"}).Stdout(ctx)
 
@@ -110,7 +111,7 @@ func (g *Golang) ModVersion() string {
 	return g.Version
 }
 
-func defaultImage(version string) *Container {
+func defaultImage(version string) *dagger.Container {
 	var image string
 	switch version {
 	case "1.17":
@@ -157,7 +158,7 @@ func (g *Golang) Build(
 	// +optional
 	// +default=["-s", "-w"]
 	ldflags []string,
-) *Directory {
+) *dagger.Directory {
 	if os == "" {
 		os = runtime.GOOS
 	}
@@ -325,7 +326,7 @@ func (g *Golang) Lint(
 // copied back onto the host.
 //
 // `dagger call -m github.com/purpleclay/daggerverse/golang --src . format export --path .`
-func (g *Golang) Format(ctx context.Context) (*Directory, error) {
+func (g *Golang) Format(ctx context.Context) (*dagger.Directory, error) {
 	ctr := g.Base
 	if _, err := ctr.WithExec([]string{"gofumpt", "-version"}).Sync(ctx); err != nil {
 		tag, err := dag.Github().GetLatestRelease("mvdan/gofumpt").Tag(ctx)

@@ -30,11 +30,11 @@ const (
 type Nsv struct {
 	// a custom base image containing an installation of nsv
 	// +private
-	Base *Container
+	Base *dagger.Container
 
 	// a path to a directory containing the projects source code
 	// +private
-	Src *Directory
+	Src *dagger.Directory
 }
 
 // Initializes the NSV dagger module
@@ -42,10 +42,10 @@ func New(
 	ctx context.Context,
 	// a custom base image containing an installation of nsv
 	// +optional
-	base *Container,
+	base *dagger.Container,
 	// a path to a directory containing the projects source code
 	// +required
-	src *Directory,
+	src *dagger.Directory,
 ) (*Nsv, error) {
 	var err error
 	if base == nil {
@@ -59,7 +59,7 @@ func New(
 	return &Nsv{Base: base, Src: src}, nil
 }
 
-func defaultImage(ctx context.Context) (*Container, error) {
+func defaultImage(ctx context.Context) (*dagger.Container, error) {
 	tag, err := dag.Github().GetLatestRelease(NsvGithubRepo).Tag(ctx)
 	if err != nil {
 		return nil, err

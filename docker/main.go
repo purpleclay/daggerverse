@@ -65,7 +65,7 @@ type DockerAuth struct {
 type DockerBuild struct {
 	// +private
 	// +required
-	Builds []*Container
+	Builds []*dagger.Container
 	// +private
 	// +optional
 	Auth *DockerAuth
@@ -75,7 +75,7 @@ type DockerBuild struct {
 func (d *Docker) Build(
 	// the path to a directory that will be used as the docker context
 	// +required
-	dir *Directory,
+	dir *dagger.Directory,
 	// the path to the Dockfile
 	// +default="Dockerfile"
 	// +optional
@@ -89,7 +89,7 @@ func (d *Docker) Build(
 	// a list of target platforms for cross-compilation
 	// +optional
 	// +default=["linux/amd64"]
-	platform []Platform,
+	platform []dagger.Platform,
 ) *DockerBuild {
 	var buildArgs []dagger.BuildArg
 	if len(args) > 0 {
@@ -103,7 +103,7 @@ func (d *Docker) Build(
 		}
 	}
 
-	var builds []*Container
+	var builds []*dagger.Container
 	for _, pform := range platform {
 		ctr := dag.Container(dagger.ContainerOpts{Platform: pform})
 		if d.Auth != nil {
@@ -130,7 +130,7 @@ func (d *DockerBuild) Save(
 	// +optional
 	// +default="image"
 	name string,
-) *Directory {
+) *dagger.Directory {
 	imgName := strings.ReplaceAll(name, " ", "-")
 
 	dir := dag.Directory()
@@ -154,8 +154,8 @@ func (d *DockerBuild) Image(
 	// the platform of the docker image to return
 	// +optional
 	// +default="linux/amd64"
-	platform Platform,
-) (*Container, error) {
+	platform dagger.Platform,
+) (*dagger.Container, error) {
 	// Only exists currently as maps are not supported
 	for _, build := range d.Builds {
 		pform, err := build.Platform(ctx)
@@ -204,7 +204,7 @@ func (d *DockerBuild) Publish(
 
 		imageRef, err := ctr.Publish(ctx,
 			fmt.Sprintf("%s:%s", ref, tag),
-			ContainerPublishOpts{
+			dagger.ContainerPublishOpts{
 				PlatformVariants:  d.Builds,
 				ForcedCompression: dagger.Gzip,
 			},

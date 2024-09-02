@@ -18,14 +18,14 @@ type Apko struct{}
 // Represents an Apko configuration that forms the basis of all apko commands
 type ApkoConfig struct {
 	// +private
-	Cfg *File
+	Cfg *dagger.File
 }
 
 // Loads a pre-configured apko configuration file
 func (a *Apko) Load(
 	// the path to the apko configuration file
 	// +required
-	cfg *File,
+	cfg *dagger.File,
 ) *ApkoConfig {
 	return &ApkoConfig{Cfg: cfg}
 }
@@ -91,7 +91,7 @@ func (a *Apko) WithWolfi(
 	return &ApkoConfig{Cfg: cfg}, nil
 }
 
-func toFile(cfg imageConfig) (*File, error) {
+func toFile(cfg imageConfig) (*dagger.File, error) {
 	environment := map[string]string{
 		"PATH": "/usr/sbin:/sbin:/usr/local/bin:/usr/bin:/bin",
 	}
@@ -229,7 +229,7 @@ func (a *ApkoConfig) Build(
 	// +optional
 	// +default=true
 	sbom bool,
-) *Directory {
+) *dagger.Directory {
 	cmd := []string{
 		"apko",
 		"build",
@@ -287,7 +287,7 @@ func formatArgs(annotations, archs, pkgs, repos []string, ref string, vcs, sbom 
 	return args
 }
 
-func base() *Container {
+func base() *dagger.Container {
 	return dag.Container().
 		From("cgr.dev/chainguard/wolfi-base").
 		WithExec([]string{"apk", "add", "--no-cache", "apko"}).

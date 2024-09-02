@@ -14,6 +14,7 @@ package main
 
 import (
 	"context"
+	"dagger/shellcheck/internal/dagger"
 	"fmt"
 )
 
@@ -27,7 +28,7 @@ const (
 type Shellcheck struct {
 	// a custom base image containing an installation of shellcheck
 	// +private
-	Base *Container
+	Base *dagger.Container
 }
 
 // Initializes the ShellCheck dagger module
@@ -35,7 +36,7 @@ func New(
 	ctx context.Context,
 	// a custom base image containing an installation of shellcheck
 	// +optional
-	base *Container,
+	base *dagger.Container,
 ) (*Shellcheck, error) {
 	var err error
 	if base == nil {
@@ -49,7 +50,7 @@ func New(
 	return &Shellcheck{Base: base}, nil
 }
 
-func defaultImage(ctx context.Context) (*Container, error) {
+func defaultImage(ctx context.Context) (*dagger.Container, error) {
 	tag, err := dag.Github().GetLatestRelease(ShellcheckGithubRepo).Tag(ctx)
 	if err != nil {
 		return nil, err
@@ -79,7 +80,7 @@ func (m *Shellcheck) Check(
 	shell string,
 	// a path to a directory containing scripts to scan, this can be a project root
 	// +required
-	src *Directory,
+	src *dagger.Directory,
 ) (string, error) {
 	cmd := []string{}
 	if format != "" {

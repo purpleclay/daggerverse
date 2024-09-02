@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"dagger/ponysay/internal/dagger"
 	"math/rand"
 )
 
@@ -65,7 +66,7 @@ var quotes = []string{
 // Ponysay Dagger module
 type Ponysay struct {
 	// +private
-	Base *Container
+	Base *dagger.Container
 }
 
 func New() *Ponysay {

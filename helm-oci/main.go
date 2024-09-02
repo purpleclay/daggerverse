@@ -22,7 +22,7 @@ const (
 // Helm OCI dagger module
 type HelmOci struct {
 	// +private
-	Base *Container
+	Base *dagger.Container
 }
 
 // Initializes the Helm OCI dagger module
@@ -30,7 +30,7 @@ func New(
 	ctx context.Context,
 	// a custom base image containing an installation of helm
 	// +optional
-	base *Container,
+	base *dagger.Container,
 ) (*HelmOci, error) {
 	var err error
 	if base == nil {
@@ -48,7 +48,7 @@ func New(
 	return &HelmOci{Base: base}, err
 }
 
-func defaultImage(ctx context.Context) (*Container, error) {
+func defaultImage(ctx context.Context) (*dagger.Container, error) {
 	tag, err := dag.Github().GetLatestRelease(HelmGithubRepo).Tag(ctx)
 	if err != nil {
 		return nil, err
@@ -64,14 +64,14 @@ func (m *HelmOci) Package(
 	ctx context.Context,
 	// a path to the directory containing the Chart.yaml file
 	// +required
-	dir *Directory,
+	dir *dagger.Directory,
 	// override the semantic version of the application this chart deploys
 	// +optional
 	appVersion string,
 	// override the semantic version of the chart
 	// +optional
 	version string,
-) (*File, error) {
+) (*dagger.File, error) {
 	chart, err := resolveChartMetadata(ctx, dir)
 	if err != nil {
 		return nil, err
@@ -101,7 +101,7 @@ func (m *HelmOci) Package(
 		File(fmt.Sprintf("%s-%s.tgz", chart.Name, ver)), nil
 }
 
-func resolveChartMetadata(ctx context.Context, dir *Directory) (*chart.Metadata, error) {
+func resolveChartMetadata(ctx context.Context, dir *dagger.Directory) (*chart.Metadata, error) {
 	manifest, err := dir.File("Chart.yaml").Contents(ctx)
 	if err != nil {
 		return nil, err
@@ -120,7 +120,7 @@ func (m *HelmOci) Push(
 	ctx context.Context,
 	// the packaged helm chart
 	// +required
-	pkg *File,
+	pkg *dagger.File,
 	// the OCI registry to publish the chart to, should include full path without chart name
 	// +required
 	registry string,
@@ -129,7 +129,7 @@ func (m *HelmOci) Push(
 	username string,
 	// the password for authenticating with the registry
 	// +optional
-	password *Secret,
+	password *dagger.Secret,
 ) (string, error) {
 	regHost, err := extractRegistryHost(registry)
 	if err != nil {
@@ -173,7 +173,7 @@ func (m *HelmOci) PackagePush(
 	ctx context.Context,
 	// a path to the directory containing the Chart.yaml file
 	// +required
-	dir *Directory,
+	dir *dagger.Directory,
 	// override the semantic version of the application this chart deploys
 	// +optional
 	appVersion string,
@@ -188,7 +188,7 @@ func (m *HelmOci) PackagePush(
 	username string,
 	// the password for authenticating with the registry
 	// +optional
-	password *Secret,
+	password *dagger.Secret,
 ) (string, error) {
 	pkg, err := m.Package(ctx, dir, appVersion, version)
 	if err != nil {
@@ -203,7 +203,7 @@ func (m *HelmOci) Lint(
 	ctx context.Context,
 	// a path to the directory containing the Chart.yaml file
 	// +required
-	dir *Directory,
+	dir *dagger.Directory,
 	// fail on any linting errors by returning a non zero exit code
 	// +optional
 	strict bool,

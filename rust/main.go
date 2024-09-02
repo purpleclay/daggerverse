@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"dagger/rust/internal/dagger"
 	"fmt"
 )
 
@@ -20,11 +21,11 @@ const (
 type Rust struct {
 	// a custom base image containing an installation of rust
 	// +private
-	Base *Container
+	Base *dagger.Container
 
 	// a path to a directory containing the projects source code
 	// +private
-	Src *Directory
+	Src *dagger.Directory
 }
 
 // Initializes the rust dagger module
@@ -35,10 +36,10 @@ func New(
 	// to support static compilation of Rust binaries. It comes bundled with the following
 	// packages: `cmake`, `build-base`, `libressl-dev`, `musl-dev`, `perl`, and `pkgconfig`
 	// +optional
-	base *Container,
+	base *dagger.Container,
 	// a path to a directory containing the projects source code
 	// +required
-	src *Directory,
+	src *dagger.Directory,
 ) (*Rust, error) {
 	var err error
 	if base == nil {
@@ -61,7 +62,7 @@ func New(
 	return &Rust{Base: base, Src: src}, nil
 }
 
-func defaultImage(ctx context.Context) (*Container, error) {
+func defaultImage(ctx context.Context) (*dagger.Container, error) {
 	tag, err := dag.Github().GetLatestRelease(RustGithubRepo).Tag(ctx)
 	if err != nil {
 		return nil, err
@@ -83,7 +84,7 @@ func defaultImage(ctx context.Context) (*Container, error) {
 		Sync(ctx)
 }
 
-func mountCaches(ctx context.Context, base *Container) *Container {
+func mountCaches(ctx context.Context, base *dagger.Container) *dagger.Container {
 	cargoRegistry := dag.CacheVolume("cargo_registry")
 	cargoGit := dag.CacheVolume("cargo_git")
 
@@ -114,7 +115,7 @@ func (r *Rust) Clippy(
 }
 
 // Format the code in your Rust project using Rustfmt
-func (r *Rust) Format(ctx context.Context) (*Directory, error) {
+func (r *Rust) Format(ctx context.Context) (*dagger.Directory, error) {
 	ctr := r.Base
 	if _, err := ctr.WithExec([]string{"cargo", "fmt", "--version"}).Sync(ctx); err != nil {
 		ctr = ctr.WithExec([]string{"rustup", "component", "add", "rustfmt"})
