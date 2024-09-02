@@ -182,14 +182,9 @@ func (d *DockerBuild) Publish(
 	// +default=["latest"]
 	tags []string,
 ) (string, error) {
-	// Sanitise the ref, stripping off any tags that may have accidentally been included
-	if strings.LastIndex(ref, ":") > -1 {
-		ref = ref[:strings.LastIndex(ref, ":")]
-	}
-
-	if len(tags) == 0 {
-		tags = append(tags, "latest")
-	}
+	// Sanitise the ref, stripping off any tags or trailing forward slashes that may
+	// have accidentally been included due to dynamic CI variables
+	imgRef := strings.TrimRight(ref, ":/")
 
 	ctr := dag.Container()
 	if d.Auth != nil {
@@ -202,8 +197,9 @@ func (d *DockerBuild) Publish(
 			tag = tag[idx+1:]
 		}
 
-		imageRef, err := ctr.Publish(ctx,
-			fmt.Sprintf("%s:%s", ref, tag),
+		imageRef, err := ctr.Publish(
+			ctx,
+			fmt.Sprintf("%s:%s", imgRef, tag),
 			dagger.ContainerPublishOpts{
 				PlatformVariants:  d.Builds,
 				ForcedCompression: dagger.Gzip,
