@@ -1,6 +1,6 @@
 module dagger/helm-oci
 
-go 1.22.3
+go 1.22.5
 
 require (
 	helm.sh/helm/v3 v3.15.1

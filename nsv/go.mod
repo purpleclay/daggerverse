@@ -1,6 +1,6 @@
 module dagger/nsv
 
-go 1.22.3
+go 1.22.5
 
 require (
 	github.com/99designs/gqlgen v0.17.49
