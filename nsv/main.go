@@ -26,6 +26,17 @@ const (
 	NsvBaseImage  = "ghcr.io/purpleclay/nsv"
 )
 
+// Supported log levels
+type LogLevel string
+
+const (
+	Debug LogLevel = "debug"
+	Info  LogLevel = "info"
+	Warn  LogLevel = "warn"
+	Error LogLevel = "error"
+	Fatal LogLevel = "fatal"
+)
+
 // NSV dagger module
 type Nsv struct {
 	// a custom base image containing an installation of nsv
@@ -46,6 +57,12 @@ func New(
 	// a path to a directory containing the projects source code
 	// +required
 	src *dagger.Directory,
+	// silence all logging within nsv
+	// +optional
+	noLog bool,
+	// the level of logging when printing to stderr
+	// +default="info"
+	logLevel LogLevel,
 ) (*Nsv, error) {
 	var err error
 	if base == nil {
@@ -56,6 +73,11 @@ func New(
 		}
 	}
 
+	if noLog {
+		base = base.WithEnvVariable("NO_LOG", "true")
+	}
+
+	base = base.WithEnvVariable("LOG_LEVEL", string(logLevel))
 	return &Nsv{Base: base, Src: src}, nil
 }
 
@@ -100,11 +122,10 @@ func (n *Nsv) Next(
 	// +optional
 	show bool,
 ) (string, error) {
-	cmd := []string{"next"}
+	cmd := []string{"nsv", "next"}
 	cmd = append(cmd, formatArgs(format, majorPrefixes, minorPrefixes, patchPrefixes, pretty, show, paths)...)
 
 	return n.Base.
-		WithEnvVariable("TINI_SUBREAPER", "1").
 		WithDirectory("/src", n.Src).
 		WithWorkdir("/src").
 		WithExec(cmd).
@@ -192,7 +213,7 @@ func (n *Nsv) Tag(
 	// +optional
 	show bool,
 ) (string, error) {
-	cmd := []string{"tag"}
+	cmd := []string{"nsv", "tag"}
 	if message != "" {
 		cmd = append(cmd, "--message", message)
 	}
@@ -214,7 +235,6 @@ func (n *Nsv) Tag(
 	}
 
 	return ctr.
-		WithEnvVariable("TINI_SUBREAPER", "1").
 		WithDirectory("/src", n.Src).
 		WithWorkdir("/src").
 		WithExec(cmd).
