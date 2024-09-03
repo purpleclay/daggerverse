@@ -147,7 +147,8 @@ func formatArgs(
 	return args
 }
 
-// Tags the next semantic version based on the commit history of your repository
+// Tags the next semantic version based on the commit history of your repository.
+// Includes experimental support for patching files through a custom hook
 func (n *Nsv) Tag(
 	ctx context.Context,
 	// provide a go template for changing the default version format
@@ -159,6 +160,10 @@ func (n *Nsv) Tag(
 	// a base64 encoded GPG private key (armored) used for signing the tag
 	// +optional
 	gpgPrivateKey *dagger.Secret,
+	// a user-defined hook that will be executed before the repository is tagged
+	// with the next semantic version. Can be inline shell or a path to a script
+	// +optional
+	hook string,
 	// a comma separated list of conventional commit prefixes for triggering a
 	// major semantic version increment
 	// +optional
@@ -190,6 +195,10 @@ func (n *Nsv) Tag(
 	cmd := []string{"tag"}
 	if message != "" {
 		cmd = append(cmd, "--message", message)
+	}
+
+	if hook != "" {
+		cmd = append(cmd, "--hook", hook)
 	}
 
 	cmd = append(cmd, formatArgs(format, majorPrefixes, minorPrefixes, patchPrefixes, pretty, show, paths)...)
