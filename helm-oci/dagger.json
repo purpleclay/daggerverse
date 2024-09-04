@@ -8,7 +8,7 @@
     },
     {
       "name": "oci-login",
-      "source": "github.com/purpleclay/daggerverse/oci-login@23dbe395ffcda9540daf6fae630847dd5bafb3cf"
+      "source": "github.com/purpleclay/daggerverse/oci-login@6bd87ae249e7a019d5699a640c741591920aceca"
     }
   ],
   "source": ".",
