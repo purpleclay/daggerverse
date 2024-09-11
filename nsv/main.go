@@ -68,7 +68,7 @@ func New(
 	if base == nil {
 		base, err = defaultImage(ctx)
 	} else {
-		if _, err = base.WithExec([]string{"version"}).Sync(ctx); err != nil {
+		if _, err = base.WithExec([]string{"nsv", "version"}).Sync(ctx); err != nil {
 			return nil, err
 		}
 	}
@@ -91,7 +91,8 @@ func defaultImage(ctx context.Context) (*dagger.Container, error) {
 		From(fmt.Sprintf("%s:%s", NsvBaseImage, tag)), nil
 }
 
-// Prints the next semantic version based on the commit history of your repository
+// Prints the next semantic version based on the commit history of your repository.
+// Documentation on Go Template support can be found at: https://docs.purpleclay.dev/nsv/reference/templating/
 func (n *Nsv) Next(
 	ctx context.Context,
 	// provide a go template for changing the default version format
@@ -169,9 +170,14 @@ func formatArgs(
 }
 
 // Tags the next semantic version based on the commit history of your repository.
-// Includes experimental support for patching files through a custom hook
+// Includes experimental support for patching files through a custom hook.
+// Documentation on Go Template support can be found at: https://docs.purpleclay.dev/nsv/reference/templating/
 func (n *Nsv) Tag(
 	ctx context.Context,
+	// a custom message when committing file changes, supports go text templates
+	// +optional
+	// +default="chore: patched files for release {{.Tag}} {{.SkipPipelineTag}}"
+	commitMessage string,
 	// provide a go template for changing the default version format
 	// +optional
 	format string,
@@ -189,9 +195,79 @@ func (n *Nsv) Tag(
 	// major semantic version increment
 	// +optional
 	majorPrefixes []string,
+	// a comma separated list of conventional commit prefixes for triggering a
+	// minor semantic version increment
+	// +optional
+	minorPrefixes []string,
+	// a comma separated list of conventional commit prefixes for triggering a
+	// patch semantic version increment
+	// +optional
+	patchPrefixes []string,
+	// a list of relative paths of projects to analyze
+	// +optional
+	paths []string,
+	// pretty-print the output of the next semantic version in a given format.
+	// Supported formats are (full, compact). Must be used in conjunction with
+	// the show flag
+	// +optional
+	// +default="full"
+	pretty string,
+	// show how the next semantic version was calculated
+	// +optional
+	show bool,
 	// a custom message for the tag, supports go text templates
 	// +optional
-	message string,
+	// +default="chore: tagged release {{.Tag}}"
+	tagMessage string,
+) (string, error) {
+	cmd := []string{"nsv", "tag"}
+	if commitMessage != "" {
+		cmd = append(cmd, "--commit-message", commitMessage)
+	}
+
+	if tagMessage != "" {
+		cmd = append(cmd, "--tag-message", tagMessage)
+	}
+
+	if hook != "" {
+		cmd = append(cmd, "--hook", hook)
+	}
+
+	cmd = append(cmd, formatArgs(format, majorPrefixes, minorPrefixes, patchPrefixes, pretty, show, paths)...)
+
+	return configureGPG(n.Base, gpgPrivateKey, gpgPassphrase).
+		WithDirectory("/src", n.Src).
+		WithWorkdir("/src").
+		WithExec(cmd).
+		Stdout(ctx)
+}
+
+// Patch files in a repository with the next semantic version based on the conventional
+// commit history of your repository.
+// Documentation on Go Template support can be found at: https://docs.purpleclay.dev/nsv/reference/templating/
+func (n *Nsv) Patch(
+	ctx context.Context,
+	// a custom message when committing file changes, supports go text templates
+	// +optional
+	// +default="chore: patched files for release {{.Tag}}"
+	commitMessage string,
+	// provide a go template for changing the default version format
+	// +optional
+	format string,
+	// an optional passphrase to unlock the GPG private key used for signing the tag
+	// +optional
+	gpgPassphrase *dagger.Secret,
+	// a base64 encoded GPG private key (armored) used for signing the tag
+	// +optional
+	gpgPrivateKey *dagger.Secret,
+	// a user-defined hook that will be executed before the repository is tagged
+	// with the next semantic version. Can be inline shell or a path to a script
+	// +optional
+	hook string,
+	// a comma separated list of conventional commit prefixes for triggering a
+	// major semantic version increment
+	// +optional
+	majorPrefixes []string,
 	// a comma separated list of conventional commit prefixes for triggering a
 	// minor semantic version increment
 	// +optional
@@ -213,9 +289,9 @@ func (n *Nsv) Tag(
 	// +optional
 	show bool,
 ) (string, error) {
-	cmd := []string{"nsv", "tag"}
-	if message != "" {
-		cmd = append(cmd, "--message", message)
+	cmd := []string{"nsv", "patch"}
+	if commitMessage != "" {
+		cmd = append(cmd, "--commit-message", commitMessage)
 	}
 
 	if hook != "" {
@@ -224,19 +300,23 @@ func (n *Nsv) Tag(
 
 	cmd = append(cmd, formatArgs(format, majorPrefixes, minorPrefixes, patchPrefixes, pretty, show, paths)...)
 
-	ctr := n.Base
-	if gpgPrivateKey != nil {
-		ctr = ctr.WithSecretVariable("GPG_PRIVATE_KEY", gpgPrivateKey).
-			WithEnvVariable("GPG_TRUST_LEVEL", "5")
-	}
-
-	if gpgPassphrase != nil {
-		ctr = ctr.WithSecretVariable("GPG_PASSPHRASE", gpgPassphrase)
-	}
-
-	return ctr.
+	return configureGPG(n.Base, gpgPrivateKey, gpgPassphrase).
 		WithDirectory("/src", n.Src).
 		WithWorkdir("/src").
 		WithExec(cmd).
 		Stdout(ctx)
+}
+
+func configureGPG(base *dagger.Container, privateKey, passphrase *dagger.Secret) *dagger.Container {
+	ctr := base
+	if privateKey != nil {
+		ctr = ctr.WithSecretVariable("GPG_PRIVATE_KEY", privateKey).
+			WithEnvVariable("GPG_TRUST_LEVEL", "5")
+	}
+
+	if passphrase != nil {
+		ctr = ctr.WithSecretVariable("GPG_PASSPHRASE", passphrase)
+	}
+
+	return ctr
 }
