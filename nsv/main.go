@@ -21,10 +21,7 @@ import (
 	"dagger/nsv/internal/dagger"
 )
 
-const (
-	NsvGithubRepo = "purpleclay/nsv"
-	NsvBaseImage  = "ghcr.io/purpleclay/nsv"
-)
+const NsvBaseImage = "ghcr.io/purpleclay/nsv:v0.10.0"
 
 // Supported log levels
 type LogLevel string
@@ -51,27 +48,17 @@ type Nsv struct {
 // Initializes the NSV dagger module
 func New(
 	ctx context.Context,
-	// a custom base image containing an installation of nsv
-	// +optional
-	base *dagger.Container,
 	// a path to a directory containing the projects source code
 	// +required
 	src *dagger.Directory,
 	// silence all logging within nsv
 	// +optional
 	noLog bool,
-	// the level of logging when printing to stderr
+	// the level of logging when printing to stderr (debug,info,warn,error,fatal)
 	// +default="info"
 	logLevel LogLevel,
 ) (*Nsv, error) {
-	var err error
-	if base == nil {
-		base, err = defaultImage(ctx)
-	} else {
-		if _, err = base.WithExec([]string{"nsv", "version"}).Sync(ctx); err != nil {
-			return nil, err
-		}
-	}
+	base := dag.Container().From(NsvBaseImage)
 
 	if noLog {
 		base = base.WithEnvVariable("NO_LOG", "true")
@@ -79,16 +66,6 @@ func New(
 
 	base = base.WithEnvVariable("LOG_LEVEL", string(logLevel))
 	return &Nsv{Base: base, Src: src}, nil
-}
-
-func defaultImage(ctx context.Context) (*dagger.Container, error) {
-	tag, err := dag.Github().GetLatestRelease(NsvGithubRepo).Tag(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return dag.Container().
-		From(fmt.Sprintf("%s:%s", NsvBaseImage, tag)), nil
 }
 
 // Prints the next semantic version based on the commit history of your repository.
