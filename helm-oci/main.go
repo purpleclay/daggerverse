@@ -4,6 +4,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"dagger/helm-oci/internal/dagger"
@@ -36,7 +38,7 @@ func New(
 	if base == nil {
 		base, err = defaultImage(ctx)
 	} else {
-		if _, err = base.WithExec([]string{"version"}).Sync(ctx); err != nil {
+		if _, err = base.WithExec([]string{"helm", "version"}).Sync(ctx); err != nil {
 			return nil, err
 		}
 	}
@@ -91,6 +93,7 @@ func (m *HelmOci) Package(
 		WithMountedDirectory(HelmWorkDir, dir).
 		WithWorkdir(HelmWorkDir).
 		WithExec([]string{
+			"helm",
 			"package",
 			".",
 			"--app-version",
@@ -154,7 +157,7 @@ func (m *HelmOci) Push(
 
 	return ctr.
 		WithMountedFile(tgzName, pkg).
-		WithExec([]string{"push", tgzName, reg}).
+		WithExec([]string{"helm", "push", tgzName, reg}).
 		Stderr(ctx)
 }
 
@@ -211,7 +214,7 @@ func (m *HelmOci) Lint(
 	// +optional
 	quiet bool,
 ) (string, error) {
-	cmd := []string{"lint", "."}
+	cmd := []string{"helm", "lint", "."}
 
 	if strict {
 		cmd = append(cmd, "--strict")
@@ -226,4 +229,80 @@ func (m *HelmOci) Lint(
 		WithWorkdir(HelmWorkDir).
 		WithExec(cmd).
 		Stdout(ctx)
+}
+
+// Renders a chart and captures output to a YAML file. Any values that would
+// be looked up within a Kubernetes cluster are faked. When overriding values,
+// the priority will always be given to the last (right-most) provided value
+func (m *HelmOci) Template(
+	ctx context.Context,
+	// a path to the directory containing the Chart.yaml file and all templates
+	// +required
+	dir *dagger.Directory,
+	// set values on the command line (can specify multiple or separate values
+	// with commas: key1=val1,key2=val2)
+	// +optional
+	set []string,
+	// set values from respective files specified via the command line
+	// (can specify multiple or separate values with commas: key1=path1,key2=path2)
+	// +optional
+	setFile []string,
+	// set JSON values on the command line (can specify multiple or separate values
+	// with commas: key1=jsonval1,key2=jsonval2)
+	// +optional
+	setJson []string,
+	// set a literal STRING value on the command line (can specify multiple or separate
+	// values with commas: key1=val1,key2=val2)
+	// +optional
+	setLiteral []string,
+	// set STRING values on the command line (can specify multiple or separate values
+	// with commas: key1=val1,key2=val2)
+	// +optional
+	setString []string,
+	// specify values in a YAML file bundled within the chart directory (can specify multiple)
+	// +optional
+	values []string,
+	// specify values in external YAML files loaded from the file system (can specify multiple).
+	// These have a higher precedence over other values files
+	// +optional
+	valuesExt []*dagger.File) (*dagger.File, error) {
+	chart, err := resolveChartMetadata(ctx, dir)
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := []string{"helm", "template", "."}
+
+	cmd = append(cmd, toFlags("--values", values)...)
+	// Hand over precedence to the helm CLI directly
+	cmd = append(cmd, toFlags("--set", set)...)
+	cmd = append(cmd, toFlags("--set-file", setFile)...)
+	cmd = append(cmd, toFlags("--set-json", setJson)...)
+	cmd = append(cmd, toFlags("--set-literal", setLiteral)...)
+	cmd = append(cmd, toFlags("--set-string", setString)...)
+
+	ctr := m.Base.
+		WithMountedDirectory(HelmWorkDir, dir).
+		WithWorkdir(HelmWorkDir)
+
+	// Ensure values files loaded externally from the chart have higher precedence
+	for i, ext := range valuesExt {
+		tmpValues := filepath.Join(os.TempDir(), fmt.Sprintf("values-%d.yaml", i+1))
+		ctr = ctr.WithFile(tmpValues, ext)
+		cmd = append(cmd, "--values", tmpValues)
+	}
+
+	template := filepath.Join(os.TempDir(), fmt.Sprintf("%s-%s.yaml", strings.ToLower(chart.Name), chart.Version))
+
+	return ctr.
+		WithExec(cmd, dagger.ContainerWithExecOpts{RedirectStdout: template}).
+		File(template), nil
+}
+
+func toFlags(flag string, values []string) []string {
+	var flags []string
+	for _, v := range values {
+		flags = append(flags, flag, v)
+	}
+	return flags
 }
