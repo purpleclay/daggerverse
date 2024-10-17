@@ -27,6 +27,7 @@
             git
             go
             gofumpt
+            nixd
           ];
         };
       }
