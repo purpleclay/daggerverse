@@ -2,6 +2,7 @@
 //
 // A collection of functions for building, formatting, testing, linting and scanning
 // your Go project for vulnerabilities.
+
 package main
 
 import (
@@ -24,7 +25,22 @@ const (
 
 	goMod     = "go.mod"
 	goWorkDir = "/src"
+	netrcPath = "/root/.netrc"
 )
+
+// Enables support for accessing private Go modules as project dependencies
+type GoPrivate struct {
+	// A .netrc configuration file that supports auto-login to remote machines
+	// (hosts) containing the private Go modules for download
+	// +private
+	Netrc *dagger.Netrc
+
+	// A list of modules that are private and should not be retrieved from
+	// the public Go module mirror. Ultimately this will be controlled through
+	// the GOPRIVATE environment variable
+	// +private
+	Modules []string
+}
 
 // Golang dagger module
 type Golang struct {
@@ -35,6 +51,10 @@ type Golang struct {
 	// Src is a directory that contains the projects source code
 	// +private
 	Src *dagger.Directory
+
+	// Private Go module support
+	// +private
+	Private *GoPrivate
 
 	// Version of the go project, defined within the go.mod file
 	// +private
@@ -48,9 +68,6 @@ func New(
 	// one is resolved based on the Go version defined within the projects go.mod file. The
 	// official Go image is pulled from DockerHub using either the bullseye (< 1.20) or
 	// bookworm (> 1.20) variants.
-	//
-	// `NOTE:` Any pre-existing entrypoint will be removed, in favour of raw `go` commands
-	// +optional
 	base *dagger.Container,
 	// a path to a directory containing the source code
 	// +required
@@ -129,6 +146,47 @@ func defaultImage(version string) *dagger.Container {
 	return dag.Container().From(image)
 }
 
+// Enable private Go module support by dynamically constructing a .netrc auto-login
+// configuration file. Each call will append a new auto-login configuration
+func (g *Golang) WithPrivate(
+	ctx context.Context,
+	// the remote machine name
+	// +required
+	machine string,
+	// a user on the remote machine that can login
+	// +required
+	username string,
+	// a token (or password) used to login into a remote machine by
+	// the identified user
+	// +required
+	password *dagger.Secret,
+	// a list of Go module paths that will be treated as private by Go
+	// through the GOPRIVATE environment variable
+	// +required
+	modules []string,
+) *Golang {
+	if g.Private == nil {
+		g.Private = &GoPrivate{
+			Netrc: dag.Netrc(),
+		}
+	}
+
+	g.Private.Netrc = g.Private.Netrc.WithLogin(machine, username, password)
+	g.Private.Modules = append(g.Private.Modules, modules...)
+	return g
+}
+
+func (g *Golang) enablePrivateModules() *dagger.Container {
+	if g.Private == nil {
+		return g.Base
+	}
+
+	return g.Base.
+		WithEnvVariable("GOPRIVATE", strings.Join(g.Private.Modules, ",")).
+		WithEnvVariable("NETRC", netrcPath).
+		WithMountedSecret(netrcPath, g.Private.Netrc.AsSecret())
+}
+
 // Build a static binary from a Go project using the provided configuration.
 // A directory is returned containing the build binary.
 //
@@ -176,7 +234,12 @@ func (g *Golang) Build(
 		cmd = append(cmd, main)
 	}
 
-	return g.Base.
+	ctr := g.Base
+	if g.Private != nil {
+		ctr = g.enablePrivateModules()
+	}
+
+	return ctr.
 		WithEnvVariable("CGO_ENABLED", "0").
 		WithEnvVariable("GOOS", os).
 		WithEnvVariable("GOARCH", arch).
@@ -227,7 +290,12 @@ func (g *Golang) Test(
 		cmd = append(cmd, []string{"-skip", skip}...)
 	}
 
-	return g.Base.WithExec(cmd).Stdout(ctx)
+	ctr := g.Base
+	if g.Private != nil {
+		ctr = g.enablePrivateModules()
+	}
+
+	return ctr.WithExec(cmd).Stdout(ctx)
 }
 
 // Execute benchmarks defined within the target project, excludes all other tests
@@ -249,7 +317,12 @@ func (g *Golang) Bench(
 		cmd = append(cmd, "-benchmem")
 	}
 
-	return g.Base.WithExec(cmd).Stdout(ctx)
+	ctr := g.Base
+	if g.Private != nil {
+		ctr = g.enablePrivateModules()
+	}
+
+	return ctr.WithExec(cmd).Stdout(ctx)
 }
 
 // Scans the target project for vulnerabilities using govulncheck
@@ -268,6 +341,10 @@ func (g *Golang) Vulncheck(ctx context.Context) (string, error) {
 		}
 
 		ctr = ctr.WithExec([]string{"go", "install", "golang.org/x/vuln/cmd/govulncheck@" + tag})
+	}
+
+	if g.Private != nil {
+		ctr = g.enablePrivateModules()
 	}
 
 	return ctr.
@@ -317,6 +394,10 @@ func (g *Golang) Lint(
 		g.Version,
 		"--out-format",
 		format,
+	}
+
+	if g.Private != nil {
+		ctr = g.enablePrivateModules()
 	}
 
 	return ctr.WithExec(cmd).Stdout(ctx)

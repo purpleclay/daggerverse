@@ -3,6 +3,10 @@
   "sdk": "go",
   "dependencies": [
     {
+      "name": "netrc",
+      "source": "github.com/purpleclay/daggerverse/netrc@b211f65ebcaccd88147499f0527c3e816655c867"
+    },
+    {
       "name": "github",
       "source": "github.com/jedevc/daggerverse/github@b2b06917e338519a04404347a105a7c3bb316472"
     }
