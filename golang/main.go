@@ -122,8 +122,6 @@ func mountCaches(ctx context.Context, base *dagger.Container) *dagger.Container 
 
 // Echoes the version of go defined within a projects go.mod file.
 // It expects the go.mod file to be located within the root of the project
-//
-// `dagger call -m github.com/purpleclay/daggerverse/golang --src . mod-version`
 func (g *Golang) ModVersion() string {
 	return g.Version
 }
@@ -188,16 +186,7 @@ func (g *Golang) enablePrivateModules() *dagger.Container {
 }
 
 // Build a static binary from a Go project using the provided configuration.
-// A directory is returned containing the build binary.
-//
-// Build a binary from a main.go file located at the project root:
-// `dagger call -m github.com/purpleclay/daggerverse/golang --src . build`
-//
-// Build a binary targeting a custom os and architecture:
-// `dagger call -m github.com/purpleclay/daggerverse/golang --src . build --os linux --arch arm64`
-//
-// Build a binary from a main.go file located within a cmd folder:
-// `dagger call -m github.com/purpleclay/daggerverse/golang --src . build --main cmd/example/main.go --out example`
+// A directory is returned containing the built binary.
 func (g *Golang) Build(
 	// the path to the main.go file of the project
 	// +optional
@@ -248,14 +237,6 @@ func (g *Golang) Build(
 }
 
 // Execute tests defined within the target project, ignores benchmarks by default
-//
-// `dagger call -m github.com/purpleclay/daggerverse/golang --src . test`
-//
-// Execute only short running tests ensuring they are shuffled:
-// `dagger call -m github.com/purpleclay/daggerverse/golang --src . test --short --shuffle`
-//
-// Execute a single test:
-// `dagger call -m github.com/purpleclay/daggerverse/golang --src . test --run 'TestSingleFeature'
 func (g *Golang) Test(
 	ctx context.Context,
 	// if only short running tests should be executed
@@ -299,8 +280,6 @@ func (g *Golang) Test(
 }
 
 // Execute benchmarks defined within the target project, excludes all other tests
-//
-// `dagger call -m github.com/purpleclay/daggerverse/golang --src . bench`
 func (g *Golang) Bench(
 	ctx context.Context,
 	// print memory allocation statistics for benchmarks
@@ -326,8 +305,6 @@ func (g *Golang) Bench(
 }
 
 // Scans the target project for vulnerabilities using govulncheck
-//
-// `dagger call -m github.com/purpleclay/daggerverse/golang --src . vulncheck`
 func (g *Golang) Vulncheck(ctx context.Context) (string, error) {
 	if g.Version == "1.17" {
 		return "", fmt.Errorf("govulncheck supports go versions 1.18 and higher")
@@ -353,8 +330,6 @@ func (g *Golang) Vulncheck(ctx context.Context) (string, error) {
 }
 
 // Lint the target project using golangci-lint
-//
-// `dagger call -m github.com/purpleclay/daggerverse/golang --src . lint`
 func (g *Golang) Lint(
 	ctx context.Context,
 	// the type of report that should be generated
@@ -404,9 +379,7 @@ func (g *Golang) Lint(
 }
 
 // Format the source code within a target project using gofumpt. Formatted code must be
-// copied back onto the host.
-//
-// `dagger call -m github.com/purpleclay/daggerverse/golang --src . format export --path .`
+// copied back onto the host.`
 func (g *Golang) Format(ctx context.Context) (*dagger.Directory, error) {
 	ctr := g.Base
 	if _, err := ctr.WithExec([]string{"gofumpt", "-version"}).Sync(ctx); err != nil {
