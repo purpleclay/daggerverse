@@ -27,7 +27,7 @@ func (a AutoLogin) String() string {
 	for _, login := range a.Logins {
 		buf.WriteString(login.String())
 	}
-	return buf.String()
+	return strings.TrimSpace(buf.String())
 }
 
 // Defines login and initialization information used by the auto-login
