@@ -26,15 +26,36 @@ const (
 	passwordIdent = "password"
 )
 
+// Supported formats for generating the auto-login configuration file
+type Format string
+
+const (
+	// A compact single line format
+	Compact Format = "compact"
+
+	// A multiline format
+	Full Format = "full"
+)
+
 // Holds configuration details for logging into remote sites from a machine
 type AutoLogin struct {
 	Logins []Login
+	Format Format
 }
 
 func (a AutoLogin) String() string {
 	var buf strings.Builder
+
+	var fmt func(Login) string
+	switch a.Format {
+	case Compact:
+		fmt = compact
+	case Full:
+		fmt = full
+	}
+
 	for _, login := range a.Logins {
-		buf.WriteString(login.String())
+		buf.WriteString(fmt(login))
 	}
 	return strings.TrimSpace(buf.String())
 }
@@ -51,8 +72,12 @@ type Login struct {
 	Password string
 }
 
-func (l Login) String() string {
+func compact(l Login) string {
 	return fmt.Sprintf("machine %s login %s password %s\n", l.Machine, l.Username, l.Password)
+}
+
+func full(l Login) string {
+	return fmt.Sprintf("machine %s\nlogin %s\npassword %s\n", l.Machine, l.Username, l.Password)
 }
 
 // Netrc dagger module
@@ -62,9 +87,13 @@ type Netrc struct {
 }
 
 // Initializes the Netrc dagger module
-func New() *Netrc {
+func New(
+	// the format when generating the auto-login configuration file (compact,full)
+	// +default="compact"
+	format Format,
+) *Netrc {
 	return &Netrc{
-		Config: AutoLogin{},
+		Config: AutoLogin{Format: format},
 	}
 }
 
