@@ -106,7 +106,7 @@ func (m *Netrc) WithLogin(
 	machine string,
 	// a user on the remote machine that can login
 	// +required
-	username string,
+	username *dagger.Secret,
 	// a token (or password) used to login into a remote machine by
 	// the identified user
 	// +required
@@ -117,9 +117,14 @@ func (m *Netrc) WithLogin(
 		return nil, err
 	}
 
+	uname, err := username.Plaintext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	login := Login{
 		Machine:  machine,
-		Username: username,
+		Username: uname,
 		Password: passwd,
 	}
 
