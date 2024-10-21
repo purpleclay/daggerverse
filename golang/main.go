@@ -153,7 +153,7 @@ func (g *Golang) WithPrivate(
 	machine string,
 	// a user on the remote machine that can login
 	// +required
-	username string,
+	username *dagger.Secret,
 	// a token (or password) used to login into a remote machine by
 	// the identified user
 	// +required
@@ -165,11 +165,34 @@ func (g *Golang) WithPrivate(
 ) *Golang {
 	if g.Private == nil {
 		g.Private = &GoPrivate{
-			Netrc: dag.Netrc(),
+			Netrc: dag.Netrc(dagger.Compact),
 		}
 	}
 
 	g.Private.Netrc = g.Private.Netrc.WithLogin(machine, username, password)
+	g.Private.Modules = append(g.Private.Modules, modules...)
+	return g
+}
+
+// Enable private Go module support by loading an existing .netrc auto-login configuration
+// file. Each call will append a new auto-login configuration
+func (g *Golang) WithPrivateLoad(
+	ctx context.Context,
+	// a path to a .netrc auto-login configuration file
+	// +required
+	cfg *dagger.File,
+	// a list of Go module paths that will be treated as private by Go
+	// through the GOPRIVATE environment variable
+	// +required
+	modules []string,
+) *Golang {
+	if g.Private == nil {
+		g.Private = &GoPrivate{
+			Netrc: dag.Netrc(dagger.Compact),
+		}
+	}
+
+	g.Private.Netrc = g.Private.Netrc.WithFile(cfg)
 	g.Private.Modules = append(g.Private.Modules, modules...)
 	return g
 }

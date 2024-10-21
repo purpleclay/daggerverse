@@ -4,7 +4,7 @@
   "dependencies": [
     {
       "name": "netrc",
-      "source": "github.com/purpleclay/daggerverse/netrc@b211f65ebcaccd88147499f0527c3e816655c867"
+      "source": "github.com/purpleclay/daggerverse/netrc@3893340aa32e2140d6181124740f0a0a23e59588"
     },
     {
       "name": "github",
