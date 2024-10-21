@@ -210,7 +210,7 @@ func eatIdent(ident string) chomp.Combinator[string] {
 // Generates and returns a .netrc file based on the current configuration
 func (m *Netrc) AsFile() *dagger.File {
 	return dag.Directory().
-		WithNewFile(".netrc", m.Config.String(), dagger.DirectoryWithNewFileOpts{Permissions: 0o644}).
+		WithNewFile(".netrc", m.Config.String(), dagger.DirectoryWithNewFileOpts{Permissions: 0o600}).
 		File(".netrc")
 }
 
