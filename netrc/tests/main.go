@@ -16,6 +16,7 @@ func (m *Tests) All(ctx context.Context) error {
 
 	p.Go(m.WithLogin)
 	p.Go(m.WithFile)
+	p.Go(m.WithFileInvalid)
 
 	return p.Wait()
 }
