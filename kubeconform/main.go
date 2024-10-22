@@ -1,16 +1,8 @@
-// A generated module for Kubeconform functions
+// Kubeconform is a streamlined tool for validating Kubernetes manifests and custom resource definitions (CRD).
 //
-// This module has been generated via dagger init and serves as a reference to
-// basic module structure as you get started with Dagger.
-//
-// Two functions have been pre-created. You can modify, delete, or add to them,
-// as needed. They demonstrate usage of arguments and return types using simple
-// echo and grep commands. The functions can be called from the dagger CLI or
-// from one of the SDKs.
-//
-// The first line in this comment block is a short description line and the
-// rest is a long description with more detail on the module's purpose or usage,
-// if appropriate. All modules should have a short description.
+// Kubeconform can help avoid mistakes and keep Kubernetes setups smooth and trouble-free. It's designed for high performance,
+// and uses a self-updating fork of the schemas registry to ensure up-to-date schemas. It supports both YAML and JSON
+// manifest files. It can handle CRDs too.
 
 package main
 
@@ -45,6 +37,8 @@ func New(
 	var err error
 	if base == nil {
 		base, err = defaultImage(ctx)
+		// The default base image stores the kubeconform binary under /
+		base = base.WithEnvVariable("PATH", "${PATH}:/", dagger.ContainerWithEnvVariableOpts{Expand: true})
 	} else {
 		if _, err = base.WithExec([]string{"kubeconform", "-v"}).Sync(ctx); err != nil {
 			return nil, err
@@ -64,10 +58,12 @@ func defaultImage(ctx context.Context) (*dagger.Container, error) {
 		From(fmt.Sprintf("%s:v%s", KubeconformBaseImage, tag[1:])), nil
 }
 
-// TODO
+// Check and validate your Kubernertes manifests for conformity against the Kubernetes
+// OpenAPI specification. This flexibility, allows your manifests to be easily validated
+// against different Kubernetes versions. Includes support for validating against CRDs
 func (m *Kubeconform) Validate(
 	ctx context.Context,
-	// a path to a directory containing Kubernetes manifests for validation
+	// a path to a directory containing Kubernetes manifests (YAML and JSON) for validation
 	// +optional
 	dirs []*dagger.Directory,
 	// skip files with missing schemas instead of failing
@@ -84,7 +80,7 @@ func (m *Kubeconform) Validate(
 	// +optional
 	// +default=4
 	goroutines int,
-	// a path to a Kubernetes manifest file for validation
+	// a path to a Kubernetes manifest file (YAML or JSON) for validation
 	// +optional
 	files []*dagger.File,
 	// a comma-separated list of kinds or GVKs to reject
@@ -106,8 +102,7 @@ func (m *Kubeconform) Validate(
 	// +optional
 	summary bool,
 ) (string, error) {
-	// TODO: how to determine the entrypoint to execute
-	cmd := []string{}
+	cmd := []string{"kubeconform"}
 	if ignoreMissingSchemas {
 		cmd = append(cmd, "-ignore-missing-schemas")
 	}
@@ -165,13 +160,12 @@ func (m *Kubeconform) Validate(
 	}
 
 	for _, dir := range dirs {
-		copyTo := filepath.Join(fmt.Sprintf("%03d", counter), fname)
-
-		ctr = ctr.WithDirectory(fmt.Sprintf("%03d", counter), dir)
+		copyTo := fmt.Sprintf("%03d", counter)
 		cmd = append(cmd, copyTo)
+
+		ctr = ctr.WithDirectory(copyTo, dir)
+		counter++
 	}
 
-	return ctr.
-		WithExec(cmd, dagger.ContainerWithExecOpts{UseEntrypoint: true}).
-		Stdout(ctx)
+	return ctr.WithExec(cmd).Stdout(ctx)
 }
