@@ -29,7 +29,7 @@ func (m *Tests) All(ctx context.Context) error {
 
 	p.Go(m.Validate)
 	p.Go(m.ValidateWithCRD)
-	//p.Go(m.ValidateDirectory)
+	p.Go(m.ValidateDirectory)
 	p.Go(m.ValidateInvalidFile)
 
 	return p.Wait()
@@ -56,7 +56,7 @@ func (m *Tests) ValidateWithCRD(ctx context.Context) error {
 
 	opts := dagger.KubeconformValidateOpts{
 		Files:          []*dagger.File{manifest},
-		SchemaLocation: "https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master/{{.NormalizedKubernetesVersion}}-standalone{{.StrictSuffix}}/{{.ResourceKind}}{{.KindSuffix}}.json",
+		SchemaLocation: "https://raw.githubusercontent.com/purpleclay/daggerverse/refs/heads/main/kubeconform/tests/testdata/trainingjob-sagemaker-v1.json",
 		Show:           true,
 	}
 
@@ -65,6 +65,38 @@ func (m *Tests) ValidateWithCRD(ctx context.Context) error {
 }
 
 func (m *Tests) ValidateDirectory(ctx context.Context) error {
+	manifests := dag.Directory().
+		WithNewFile("valid.yaml", valid, dagger.DirectoryWithNewFileOpts{Permissions: 0o644}).
+		WithNewFile("invalid.yaml", invalid, dagger.DirectoryWithNewFileOpts{Permissions: 0o644})
+
+	opts := dagger.KubeconformValidateOpts{
+		Dirs:    []*dagger.Directory{manifests},
+		Show:    true,
+		Summary: true,
+	}
+
+	_, err := dag.Kubeconform().Validate(ctx, opts)
+	expected := "Summary: 12 resources found in 2 files - Valid: 11, Invalid: 1, Errors: 0, Skipped: 0"
+
+	actual := err.Error()
+	if idx := strings.Index(actual, "Summary:"); idx != -1 {
+		actual = actual[idx:]
+	}
+
+	if actual != expected {
+		return fmt.Errorf("kubeconform summary does not match:\n%v",
+			diff.LineDiff(expected, actual))
+	}
+
+	actual = err.Error()
+	if !strings.Contains(actual, "001/valid.yaml") {
+		return fmt.Errorf("kubeconform summary does not contain expected file: %s", "001/valid.yaml")
+	}
+
+	if !strings.Contains(actual, "001/invalid.yaml") {
+		return fmt.Errorf("kubeconform summary does not contain expected file: %s", "001/invalid.yaml")
+	}
+
 	return nil
 }
 
