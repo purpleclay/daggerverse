@@ -1,0 +1,12 @@
+{
+  "name": "tests",
+  "sdk": "go",
+  "dependencies": [
+    {
+      "name": "kubeconform",
+      "source": ".."
+    }
+  ],
+  "source": ".",
+  "engineVersion": "v0.12.5"
+}
