@@ -1,5 +1,6 @@
 {
   "name": "netrc",
+  "engineVersion": "v0.14.0",
   "sdk": "go",
-  "engineVersion": "v0.12.5"
+  "source": "."
 }

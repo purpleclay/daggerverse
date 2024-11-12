@@ -1,16 +1,18 @@
 {
   "name": "helm-oci",
+  "engineVersion": "v0.14.0",
   "sdk": "go",
   "dependencies": [
     {
       "name": "github",
-      "source": "github.com/jedevc/daggerverse/github@b2b06917e338519a04404347a105a7c3bb316472"
+      "source": "github.com/jedevc/daggerverse/github@b2b06917e338519a04404347a105a7c3bb316472",
+      "pin": "b2b06917e338519a04404347a105a7c3bb316472"
     },
     {
       "name": "oci-login",
-      "source": "github.com/purpleclay/daggerverse/oci-login@6bd87ae249e7a019d5699a640c741591920aceca"
+      "source": "github.com/purpleclay/daggerverse/oci-login@6bd87ae249e7a019d5699a640c741591920aceca",
+      "pin": "6bd87ae249e7a019d5699a640c741591920aceca"
     }
   ],
-  "source": ".",
-  "engineVersion": "v0.12.5"
+  "source": "."
 }
