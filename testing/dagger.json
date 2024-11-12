@@ -1,0 +1,13 @@
+{
+  "name": "testing",
+  "engineVersion": "v0.14.0",
+  "sdk": "go",
+  "dependencies": [
+    {
+      "name": "nsv",
+      "source": "github.com/purpleclay/daggerverse/nsv@dcf4cc7865ada8433f601f728e4a019b68d1fe4e",
+      "pin": "dcf4cc7865ada8433f601f728e4a019b68d1fe4e"
+    }
+  ],
+  "source": "."
+}
