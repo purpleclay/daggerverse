@@ -8,7 +8,7 @@ import (
 type Testing struct{}
 
 // Returns a container that echoes whatever string argument is provided
-func (m *Testing) Test(
+func (m *Testing) Next(
 	ctx context.Context,
 	// the directory to run NSV against
 	// +required
