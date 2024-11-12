@@ -1,13 +1,13 @@
 {
-  description = "Welcome to the Daggerverse! Dagger functions to streamline your CI";
+  description = "Welcome to the Purple Clay Daggerverse! Dagger functions to streamline your CI";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
 
     dagger = {
-        # Locked to version 0.12.5 for the time being
-        url = "github:dagger/nix/5053689af7d18e67254ba0b2d60fa916b7370104";
+        # Locked to version 0.14.0
+        url = "github:dagger/nix/9852fdddcdcb52841275ffb6a39fa1524d538d5a";
         inputs = {
             nixpkgs.follows = "nixpkgs";
         };

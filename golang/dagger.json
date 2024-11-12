@@ -1,16 +1,18 @@
 {
   "name": "golang",
+  "engineVersion": "v0.14.0",
   "sdk": "go",
   "dependencies": [
     {
-      "name": "netrc",
-      "source": "github.com/purpleclay/daggerverse/netrc@3893340aa32e2140d6181124740f0a0a23e59588"
+      "name": "github",
+      "source": "github.com/jedevc/daggerverse/github@b2b06917e338519a04404347a105a7c3bb316472",
+      "pin": "b2b06917e338519a04404347a105a7c3bb316472"
     },
     {
-      "name": "github",
-      "source": "github.com/jedevc/daggerverse/github@b2b06917e338519a04404347a105a7c3bb316472"
+      "name": "netrc",
+      "source": "github.com/purpleclay/daggerverse/netrc@3893340aa32e2140d6181124740f0a0a23e59588",
+      "pin": "3893340aa32e2140d6181124740f0a0a23e59588"
     }
   ],
-  "source": ".",
-  "engineVersion": "v0.12.5"
+  "source": "."
 }
