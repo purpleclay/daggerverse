@@ -1,5 +1,5 @@
 {
-  description = "Welcome to the Purpleclay Daggerverse! Dagger functions to streamline your CI";
+  description = "Welcome to the Purple Clay Daggerverse! Dagger functions to streamline your CI";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
