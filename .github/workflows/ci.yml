@@ -1,0 +1,27 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - helm-oci
+
+    steps:
+      - name: ${{ matrix.module }}
+        uses: dagger/dagger-for-github@v7
+        with:
+          verb: call
+          module: github.com/${{ github.repository }}/${{ matrix.module }}/tests@${{ github.ref }}
+          args: all-tests
+          cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
