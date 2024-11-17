@@ -1,0 +1,13 @@
+{
+  "name": "tests",
+  "engineVersion": "v0.14.0",
+  "sdk": "go",
+  "dependencies": [
+    {
+      "name": "helm-oci",
+      "source": "..",
+      "pin": ""
+    }
+  ],
+  "source": "."
+}

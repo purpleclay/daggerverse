@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -58,6 +59,34 @@ func defaultImage(ctx context.Context) (*dagger.Container, error) {
 
 	return dag.Container().
 		From(fmt.Sprintf("%s:%s", HelmBaseImage, tag[1:])), nil
+}
+
+// Generates a dotenv file based on the core identifying metadata within a charts
+// Chart.yaml file (Name, Version, AppVersion, and KubeVersion).
+func (m *HelmOci) Dotenv(
+	ctx context.Context,
+	// a path to the directory containing the Chart.yaml file
+	// +required
+	dir *dagger.Directory,
+	// a custom prefix for all environment variables e.g. CHART_NAME
+	// +optional
+	// +default="CHART"
+	prefix string,
+) (*dagger.File, error) {
+	chart, err := resolveChartMetadata(ctx, dir)
+	if err != nil {
+		return nil, err
+	}
+
+	cleanPrefix := strings.TrimRight(prefix, "_")
+
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "%s_NAME=\"%s\"\n", cleanPrefix, chart.Name)
+	fmt.Fprintf(&buf, "%s_VERSION=\"%s\"\n", cleanPrefix, chart.Version)
+	fmt.Fprintf(&buf, "%s_APP_VERSION=\"%s\"\n", cleanPrefix, chart.AppVersion)
+	fmt.Fprintf(&buf, "%s_KUBE_VERSION=\"%s\"\n", cleanPrefix, chart.KubeVersion)
+
+	return dag.Directory().WithNewFile(".env", buf.String()).File(".env"), nil
 }
 
 // Packages a chart into a versioned chart archive file using metadata defined within
