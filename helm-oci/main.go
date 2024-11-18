@@ -68,6 +68,9 @@ func (m *HelmOci) Dotenv(
 	// a path to the directory containing the Chart.yaml file
 	// +required
 	dir *dagger.Directory,
+	// ensure generated dotenv file is compatible with gitlab
+	// +optional
+	gitlab bool,
 	// a custom prefix for all environment variables e.g. CHART_NAME
 	// +optional
 	// +default="CHART"
@@ -86,7 +89,12 @@ func (m *HelmOci) Dotenv(
 	fmt.Fprintf(&buf, "%s_APP_VERSION=\"%s\"\n", cleanPrefix, chart.AppVersion)
 	fmt.Fprintf(&buf, "%s_KUBE_VERSION=\"%s\"\n", cleanPrefix, chart.KubeVersion)
 
-	return dag.Directory().WithNewFile(".env", buf.String()).File(".env"), nil
+	dotenv := buf.String()
+	if gitlab {
+		dotenv = strings.ReplaceAll(dotenv, "\"", "")
+	}
+
+	return dag.Directory().WithNewFile(".env", dotenv).File(".env"), nil
 }
 
 // Packages a chart into a versioned chart archive file using metadata defined within
