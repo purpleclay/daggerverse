@@ -88,7 +88,7 @@ func (m *Kubeconform) Validate(
 	reject []string,
 	// override the schema search location path
 	// +optional
-	schemaLocation string,
+	schemaLocation []string,
 	// print results for all resources (verbose)
 	// +optional
 	show bool,
@@ -123,8 +123,10 @@ func (m *Kubeconform) Validate(
 		cmd = append(cmd, "-reject", strings.Join(reject, ","))
 	}
 
-	if schemaLocation != "" {
-		cmd = append(cmd, "-schema-location", schemaLocation)
+	if len(schemaLocation) > 0 {
+		for _, loc := range schemaLocation {
+			cmd = append(cmd, "-schema-location", loc)
+		}
 	}
 
 	if len(skip) > 0 {
