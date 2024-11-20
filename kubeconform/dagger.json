@@ -1,6 +1,7 @@
 {
   "name": "kubeconform",
   "engineVersion": "v0.14.0",
+  "exclude": ["tests"],
   "sdk": "go",
   "dependencies": [
     {

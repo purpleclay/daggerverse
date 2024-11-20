@@ -24,7 +24,7 @@ var (
 
 type Tests struct{}
 
-func (m *Tests) All(ctx context.Context) error {
+func (m *Tests) AllTests(ctx context.Context) error {
 	p := pool.New().WithErrors().WithContext(ctx)
 
 	p.Go(m.Validate)
