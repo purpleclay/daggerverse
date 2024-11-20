@@ -24,7 +24,7 @@ var (
 
 type Tests struct{}
 
-func (m *Tests) All(ctx context.Context) error {
+func (m *Tests) AllTests(ctx context.Context) error {
 	p := pool.New().WithErrors().WithContext(ctx)
 
 	p.Go(m.Validate)
@@ -55,9 +55,12 @@ func (m *Tests) ValidateWithCRD(ctx context.Context) error {
 		File("crd.yaml")
 
 	opts := dagger.KubeconformValidateOpts{
-		Files:          []*dagger.File{manifest},
-		SchemaLocation: "https://raw.githubusercontent.com/purpleclay/daggerverse/refs/heads/main/kubeconform/tests/testdata/trainingjob-sagemaker-v1.json",
-		Show:           true,
+		Files: []*dagger.File{manifest},
+		SchemaLocation: []string{
+			"default",
+			"https://raw.githubusercontent.com/purpleclay/daggerverse/refs/heads/main/kubeconform/tests/testdata/trainingjob-sagemaker-v1.json",
+		},
+		Show: true,
 	}
 
 	_, err := dag.Kubeconform().Validate(ctx, opts)
