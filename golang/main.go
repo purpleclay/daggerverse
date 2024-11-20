@@ -68,6 +68,7 @@ func New(
 	// one is resolved based on the Go version defined within the projects go.mod file. The
 	// official Go image is pulled from DockerHub using either the bullseye (< 1.20) or
 	// bookworm (> 1.20) variants.
+	// +optional
 	base *dagger.Container,
 	// a path to a directory containing the source code
 	// +required
