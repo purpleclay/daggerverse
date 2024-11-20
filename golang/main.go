@@ -165,7 +165,7 @@ func (g *Golang) WithPrivate(
 ) *Golang {
 	if g.Private == nil {
 		g.Private = &GoPrivate{
-			Netrc: dag.Netrc(dagger.Compact),
+			Netrc: dag.Netrc(dagger.NetrcOpts{Format: dagger.Compact}),
 		}
 	}
 
@@ -188,7 +188,7 @@ func (g *Golang) WithPrivateLoad(
 ) *Golang {
 	if g.Private == nil {
 		g.Private = &GoPrivate{
-			Netrc: dag.Netrc(dagger.Compact),
+			Netrc: dag.Netrc(dagger.NetrcOpts{Format: dagger.Compact}),
 		}
 	}
 
