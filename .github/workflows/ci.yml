@@ -16,6 +16,7 @@ jobs:
       matrix:
         module:
           - helm-oci
+          - netrc
 
     steps:
       - name: ${{ matrix.module }}

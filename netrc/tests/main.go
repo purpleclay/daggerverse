@@ -54,7 +54,7 @@ password arkam`
 		WithNewFile(".netrc", content, dagger.DirectoryWithNewFileOpts{Permissions: 0o600}).
 		File(".netrc")
 
-	_, err := dag.Netrc(dagger.Compact).WithFile(cfg).AsFile().Sync(ctx)
+	_, err := dag.Netrc(dagger.NetrcOpts{Format: dagger.Compact}).WithFile(cfg).AsFile().Sync(ctx)
 	return err
 }
 
@@ -65,7 +65,7 @@ func (m *Tests) WithFileInvalid(ctx context.Context) error {
 		WithNewFile(".netrc", content, dagger.DirectoryWithNewFileOpts{Permissions: 0o600}).
 		File(".netrc")
 
-	_, err := dag.Netrc(dagger.Compact).WithFile(cfg).AsFile().Sync(ctx)
+	_, err := dag.Netrc(dagger.NetrcOpts{Format: dagger.Compact}).WithFile(cfg).AsFile().Sync(ctx)
 	if err == nil {
 		return fmt.Errorf("expected error while parsing invalid auto-login configuration file")
 	}
