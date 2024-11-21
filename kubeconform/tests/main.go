@@ -20,6 +20,15 @@ var (
 
 	//go:embed testdata/invalid.yaml
 	invalid string
+
+	//go:embed testdata/function.yaml
+	function string
+
+	//go:embed testdata/eventing-crds.yaml
+	eventingCRDs string
+
+	//go:embed testdata/serving-crds.yaml
+	servingCRDs string
 )
 
 type Tests struct{}
@@ -28,7 +37,9 @@ func (m *Tests) AllTests(ctx context.Context) error {
 	p := pool.New().WithErrors().WithContext(ctx)
 
 	p.Go(m.Validate)
-	p.Go(m.ValidateWithCRD)
+	p.Go(m.ValidateWithCustomSchema)
+	p.Go(m.ValidateWithLocalCRDs)
+	p.Go(m.ValidateWithRemoteCRDs)
 	p.Go(m.ValidateDirectory)
 	p.Go(m.ValidateInvalidFile)
 
@@ -41,15 +52,16 @@ func (m *Tests) Validate(ctx context.Context) error {
 		File("valid.yaml")
 
 	opts := dagger.KubeconformValidateOpts{
-		Files: []*dagger.File{manifest},
-		Show:  true,
+		Files:  []*dagger.File{manifest},
+		Show:   true,
+		Strict: true,
 	}
 
 	_, err := dag.Kubeconform().Validate(ctx, opts)
 	return err
 }
 
-func (m *Tests) ValidateWithCRD(ctx context.Context) error {
+func (m *Tests) ValidateWithCustomSchema(ctx context.Context) error {
 	manifest := dag.Directory().
 		WithNewFile("crd.yaml", crd, dagger.DirectoryWithNewFileOpts{Permissions: 0o644}).
 		File("crd.yaml")
@@ -64,6 +76,51 @@ func (m *Tests) ValidateWithCRD(ctx context.Context) error {
 	}
 
 	_, err := dag.Kubeconform().Validate(ctx, opts)
+	return err
+}
+
+func (m *Tests) ValidateWithLocalCRDs(ctx context.Context) error {
+	manifest := dag.Directory().
+		WithNewFile("function.yaml", function, dagger.DirectoryWithNewFileOpts{Permissions: 0o644}).
+		File("function.yaml")
+
+	evntCRDs := dag.Directory().
+		WithNewFile("eventing-crds.yaml", eventingCRDs, dagger.DirectoryWithNewFileOpts{Permissions: 0o644}).
+		File("eventing-crds.yaml")
+
+	srvCRDs := dag.Directory().
+		WithNewFile("serving-crds.yaml", servingCRDs, dagger.DirectoryWithNewFileOpts{Permissions: 0o644}).
+		File("serving-crds.yaml")
+
+	opts := dagger.KubeconformValidateOpts{
+		Files:          []*dagger.File{manifest},
+		SchemaLocation: []string{"default"},
+		Show:           true,
+	}
+
+	_, err := dag.Kubeconform().
+		WithLocalCrds([]*dagger.File{evntCRDs, srvCRDs}).
+		Validate(ctx, opts)
+	return err
+}
+
+func (m *Tests) ValidateWithRemoteCRDs(ctx context.Context) error {
+	manifest := dag.Directory().
+		WithNewFile("function.yaml", function, dagger.DirectoryWithNewFileOpts{Permissions: 0o644}).
+		File("function.yaml")
+
+	opts := dagger.KubeconformValidateOpts{
+		Files:          []*dagger.File{manifest},
+		SchemaLocation: []string{"default"},
+		Show:           true,
+	}
+
+	_, err := dag.Kubeconform().
+		WithRemoteCrds([]string{
+			"https://github.com/knative/serving/releases/download/knative-v1.15.2/serving-crds.yaml",
+			"https://github.com/knative/eventing/releases/download/knative-v1.15.3/eventing-crds.yaml",
+		}).
+		Validate(ctx, opts)
 	return err
 }
 
