@@ -14,10 +14,11 @@
 !flake.lock
 !flake.nix
 
-# Allow Go files
+# Allow Dagger modulle files
 !*.go
 !go.sum
 !go.mod
+!*.py
 
 # Recurse through sub-directories applying the same patterns
 !*/
