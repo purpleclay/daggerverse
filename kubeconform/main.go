@@ -9,6 +9,7 @@ package main
 import (
 	"context"
 	"dagger/kubeconform/internal/dagger"
+	_ "embed"
 	"fmt"
 	"path/filepath"
 	"strconv"
@@ -16,15 +17,25 @@ import (
 )
 
 const (
-	KubeconformGithubRepo = "yannh/kubeconform"
-	KubeconformBaseImage  = "ghcr.io/yannh/kubeconform"
-	KubeconformWorkDir    = "/work"
+	KubeconformGithubRepo         = "yannh/kubeconform"
+	KubeconformBaseImage          = "ghcr.io/yannh/kubeconform"
+	KubeconformWorkDir            = "/work"
+	KubeconformCRDFileFormat      = "{fullgroup}/{kind}_{version}"
+	KubeconformSchemaDir          = "schemas"
+	KubeconformSchemaLocationTmpl = "schemas/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
 )
+
+//go:embed openapi2jsonschema.py
+var openapi2JsonSchema string
 
 // Kubeconform dagger module
 type Kubeconform struct {
 	// +private
 	Base *dagger.Container
+
+	// +private
+	// +optional
+	Schemas *dagger.Directory
 }
 
 // Initializes the Kubeconform dagger module
@@ -37,8 +48,6 @@ func New(
 	var err error
 	if base == nil {
 		base, err = defaultImage(ctx)
-		// The default base image stores the kubeconform binary under /
-		base = base.WithEnvVariable("PATH", "${PATH}:/", dagger.ContainerWithEnvVariableOpts{Expand: true})
 	} else {
 		if _, err = base.WithExec([]string{"kubeconform", "-v"}).Sync(ctx); err != nil {
 			return nil, err
@@ -54,8 +63,92 @@ func defaultImage(ctx context.Context) (*dagger.Container, error) {
 		return nil, err
 	}
 
+	// The default base image stores the kubeconform binary under /
 	return dag.Container().
-		From(fmt.Sprintf("%s:v%s", KubeconformBaseImage, tag[1:])), nil
+		From(fmt.Sprintf("%s:v%s", KubeconformBaseImage, tag[1:])).
+		WithEnvVariable("PATH", "${PATH}:/", dagger.ContainerWithEnvVariableOpts{Expand: true}), nil
+}
+
+// Generates OpenAPI JSON schemas from the provided local Kubernetes CRDs and adds them as
+// a schema location to the kubeconform base image. Schemas are generated using the same
+// directory structure as https://github.com/datreeio/CRDs-catalog
+func (m *Kubeconform) WithLocalCRDs(
+	ctx context.Context,
+	// a list of paths to local Kubernetes CRD files to transform
+	// +required
+	crds []*dagger.File,
+) (*Kubeconform, error) {
+	schemas, err := generateSchemas(ctx, crds)
+	if err != nil {
+		return m, err
+	}
+
+	if m.Schemas == nil {
+		m.Schemas = dag.Directory()
+	}
+
+	m.Schemas = m.Schemas.WithDirectory(KubeconformSchemaDir, schemas)
+	return m, nil
+}
+
+func generateSchemas(ctx context.Context, crds []*dagger.File) (*dagger.Directory, error) {
+	generator := dag.Container().
+		From("python:3.13.0-alpine3.20").
+		WithExec([]string{"pip", "install", "--no-cache-dir", "pyaml==24.9.0"}).
+		WithEnvVariable("FILENAME_FORMAT", KubeconformCRDFileFormat).
+		WithWorkdir(KubeconformWorkDir).
+		WithNewFile(
+			"openapi2jsonschema.py",
+			openapi2JsonSchema,
+			dagger.ContainerWithNewFileOpts{
+				Permissions: 0o755,
+			})
+
+	excludeNames := []string{}
+	for _, crd := range crds {
+		name, err := crd.Name(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		generator = generator.
+			WithFile(name, crd, dagger.ContainerWithFileOpts{Permissions: 0o644}).
+			WithExec([]string{"python3", "openapi2jsonschema.py", name})
+
+		excludeNames = append(excludeNames, name)
+	}
+
+	return generator.
+		Directory(".").
+		WithoutFiles(append(excludeNames, "openapi2jsonschema.py")), nil
+}
+
+// Generates OpenAPI JSON schemas from the provided remote Kubernetes CRDs and adds them as
+// a schema location to the kubeconform base image. Schemas are generated using the same
+// directory structure as https://github.com/datreeio/CRDs-catalog
+func (m *Kubeconform) WithRemoteCRDs(
+	ctx context.Context,
+	// a list of URLs to remote Kubernetes CRD files to transform
+	// +required
+	crds []string,
+) (*Kubeconform, error) {
+	// TODO: both WithRemoteCRDs and WithLocalCRDs can be combined with: https://github.com/dagger/dagger/issues/6957
+	fetched := []*dagger.File{}
+	for _, crd := range crds {
+		fetched = append(fetched, dag.HTTP(crd))
+	}
+
+	schemas, err := generateSchemas(ctx, fetched)
+	if err != nil {
+		return m, err
+	}
+
+	if m.Schemas == nil {
+		m.Schemas = dag.Directory()
+	}
+
+	m.Schemas = m.Schemas.WithDirectory(KubeconformSchemaDir, schemas)
+	return m, nil
 }
 
 // Check and validate your Kubernertes manifests for conformity against the Kubernetes
@@ -146,6 +239,11 @@ func (m *Kubeconform) Validate(
 	}
 
 	ctr := m.Base.WithWorkdir(KubeconformWorkDir)
+
+	if m.Schemas != nil {
+		ctr = ctr.WithDirectory(KubeconformWorkDir, m.Schemas)
+		cmd = append(cmd, "-schema-location", KubeconformSchemaLocationTmpl)
+	}
 
 	counter := 1
 	for _, file := range files {
