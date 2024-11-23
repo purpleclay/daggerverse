@@ -21,7 +21,7 @@ import (
 	"dagger/nsv/internal/dagger"
 )
 
-const NsvBaseImage = "ghcr.io/purpleclay/nsv:v0.10.0"
+const NsvBaseImage = "ghcr.io/purpleclay/nsv:v0.10.1"
 
 // Supported log levels
 type LogLevel string
