@@ -2,25 +2,21 @@
 //
 // The goals of ShellCheck are:
 //
-// - To point out and clarify typical beginner's syntax issues that cause a shell to
-// give cryptic error messages.
-//
-// - To point out and clarify typical intermediate level semantic problems that cause a
-// shell to behave strangely and counter-intuitively.
-//
-// -To point out subtle caveats, corner cases and pitfalls that may cause an advanced user's
-// otherwise working script to fail under future circumstances.
+// - To point out and clarify typical beginner's syntax issues that cause a shell to give cryptic error messages.
+// - To point out and clarify typical intermediate level semantic problems that cause a shell to behave strangely and counter-intuitively.
+// - To point out subtle caveats, corner cases and pitfalls that may cause an advanced user's otherwise working script to fail under future circumstances.
 package main
 
 import (
 	"context"
 	"dagger/shellcheck/internal/dagger"
 	"fmt"
+	"strings"
 )
 
 const (
 	ShellcheckGithubRepo = "koalaman/shellcheck"
-	ShellcheckBaseImage  = "koalaman/shellcheck"
+	ShellcheckBaseImage  = "koalaman/shellcheck-alpine"
 	WorkingDir           = "/work"
 )
 
@@ -42,12 +38,12 @@ func New(
 	if base == nil {
 		base, err = defaultImage(ctx)
 	} else {
-		if _, err = base.WithExec([]string{"--version"}).Sync(ctx); err != nil {
+		if _, err = base.WithExec([]string{"shellcheck", "--version"}).Sync(ctx); err != nil {
 			return nil, err
 		}
 	}
 
-	return &Shellcheck{Base: base}, nil
+	return &Shellcheck{Base: base}, err
 }
 
 func defaultImage(ctx context.Context) (*dagger.Container, error) {
@@ -69,7 +65,8 @@ func (m *Shellcheck) Check(
 	// +optional
 	format string,
 	// a list of paths for checking
-	// +required
+	// +optional
+	// +default=["*.sh"]
 	paths []string,
 	// the minimum severity of errors to consider when checking scripts
 	// (error, warning, info, style)
@@ -82,7 +79,7 @@ func (m *Shellcheck) Check(
 	// +required
 	src *dagger.Directory,
 ) (string, error) {
-	cmd := []string{}
+	cmd := []string{"shellcheck"}
 	if format != "" {
 		cmd = append(cmd, "--format", format)
 	}
@@ -95,11 +92,13 @@ func (m *Shellcheck) Check(
 		cmd = append(cmd, "--shell", shell)
 	}
 
-	cmd = append(cmd, paths...)
+	for _, toCheck := range paths {
+		cmd = append(cmd, toCheck)
+	}
 
 	return m.Base.
 		WithDirectory(WorkingDir, src).
 		WithWorkdir(WorkingDir).
-		WithExec(cmd).
+		WithExec([]string{"sh", "-c", strings.Join(cmd, " ")}).
 		Stdout(ctx)
 }
