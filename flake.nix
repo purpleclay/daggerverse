@@ -28,6 +28,7 @@
             go
             gofumpt
             nixd
+            shellcheck
           ];
         };
       }
