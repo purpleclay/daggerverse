@@ -60,10 +60,16 @@ func defaultImage(ctx context.Context) (*dagger.Container, error) {
 // to identify
 func (m *Shellcheck) Check(
 	ctx context.Context,
+	// exclude checks with the following codes
+	// +optional
+	exclude []string,
 	// the output format of the shellcheck report
 	// (checkstyle, diff, gcc, json, json1, quiet, tty)
 	// +optional
 	format string,
+	// only consider checks with the following codes
+	// +optional
+	include []string,
 	// a list of paths for checking
 	// +optional
 	// +default=["*.sh"]
@@ -80,8 +86,16 @@ func (m *Shellcheck) Check(
 	src *dagger.Directory,
 ) (string, error) {
 	cmd := []string{"shellcheck"}
+	if len(exclude) > 0 {
+		cmd = append(cmd, "--exclude", strings.Join(exclude, ","))
+	}
+
 	if format != "" {
 		cmd = append(cmd, "--format", format)
+	}
+
+	if len(include) > 0 {
+		cmd = append(cmd, "--include", strings.Join(include, ","))
 	}
 
 	if severity != "" {
