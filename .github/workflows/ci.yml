@@ -18,6 +18,7 @@ jobs:
           - helm-oci
           - kubeconform
           - netrc
+          - shellcheck
 
     steps:
       - name: ${{ matrix.module }}
