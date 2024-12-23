@@ -21,7 +21,7 @@ import (
 	"dagger/nsv/internal/dagger"
 )
 
-const NsvBaseImage = "ghcr.io/purpleclay/nsv:v0.10.1"
+const NsvBaseImage = "ghcr.io/purpleclay/nsv:v0.10.2"
 
 // Supported log levels
 type LogLevel string
@@ -73,6 +73,9 @@ func New(
 // Documentation on Go Template support can be found at: https://docs.purpleclay.dev/nsv/reference/templating/
 func (n *Nsv) Next(
 	ctx context.Context,
+	// fix a shallow clone of a repository if detected
+	// +optional
+	fixShallow bool,
 	// provide a go template for changing the default version format
 	// +optional
 	format string,
@@ -102,7 +105,16 @@ func (n *Nsv) Next(
 	show bool,
 ) (string, error) {
 	cmd := []string{"next"}
-	cmd = append(cmd, formatArgs(format, majorPrefixes, minorPrefixes, patchPrefixes, pretty, show, paths)...)
+	cmd = append(cmd, formatArgs(
+		fixShallow,
+		format,
+		majorPrefixes,
+		minorPrefixes,
+		patchPrefixes,
+		pretty,
+		show,
+		paths,
+	)...)
 
 	return n.Base.
 		WithDirectory("/src", n.Src).
@@ -112,6 +124,7 @@ func (n *Nsv) Next(
 }
 
 func formatArgs(
+	fixShallow bool,
 	format string,
 	majorPrefixes, minorPrefixes, patchPrefixes []string,
 	pretty string,
@@ -119,6 +132,10 @@ func formatArgs(
 	paths []string,
 ) []string {
 	var args []string
+
+	if fixShallow {
+		args = append(args, "--fix-shallow")
+	}
 
 	if format != "" {
 		args = append(args, "--format", format)
@@ -156,6 +173,9 @@ func (n *Nsv) Tag(
 	// +optional
 	// +default="chore: patched files for release {{.Tag}} {{.SkipPipelineTag}}"
 	commitMessage string,
+	// fix a shallow clone of a repository if detected
+	// +optional
+	fixShallow bool,
 	// provide a go template for changing the default version format
 	// +optional
 	format string,
@@ -211,7 +231,16 @@ func (n *Nsv) Tag(
 		cmd = append(cmd, "--hook", hook)
 	}
 
-	cmd = append(cmd, formatArgs(format, majorPrefixes, minorPrefixes, patchPrefixes, pretty, show, paths)...)
+	cmd = append(cmd, formatArgs(
+		fixShallow,
+		format,
+		majorPrefixes,
+		minorPrefixes,
+		patchPrefixes,
+		pretty,
+		show,
+		paths,
+	)...)
 
 	return configureGPG(n.Base, gpgPrivateKey, gpgPassphrase).
 		WithDirectory("/src", n.Src).
@@ -229,6 +258,9 @@ func (n *Nsv) Patch(
 	// +optional
 	// +default="chore: patched files for release {{.Tag}}"
 	commitMessage string,
+	// fix a shallow clone of a repository if detected
+	// +optional
+	fixShallow bool,
 	// provide a go template for changing the default version format
 	// +optional
 	format string,
@@ -276,7 +308,16 @@ func (n *Nsv) Patch(
 		cmd = append(cmd, "--hook", hook)
 	}
 
-	cmd = append(cmd, formatArgs(format, majorPrefixes, minorPrefixes, patchPrefixes, pretty, show, paths)...)
+	cmd = append(cmd, formatArgs(
+		fixShallow,
+		format,
+		majorPrefixes,
+		minorPrefixes,
+		patchPrefixes,
+		pretty,
+		show,
+		paths,
+	)...)
 
 	return configureGPG(n.Base, gpgPrivateKey, gpgPassphrase).
 		WithDirectory("/src", n.Src).
