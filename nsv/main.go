@@ -100,13 +100,13 @@ func (n *Nsv) Next(
 	// +optional
 	show bool,
 ) (string, error) {
-	cmd := []string{"nsv", "next"}
+	cmd := []string{"next"}
 	cmd = append(cmd, formatArgs(format, majorPrefixes, minorPrefixes, patchPrefixes, pretty, show, paths)...)
 
 	return n.Base.
 		WithDirectory("/src", n.Src).
 		WithWorkdir("/src").
-		WithExec(cmd).
+		WithExec(cmd, dagger.ContainerWithExecOpts{UseEntrypoint: true}).
 		Stdout(ctx)
 }
 
@@ -197,7 +197,7 @@ func (n *Nsv) Tag(
 	// +default="chore: tagged release {{.Tag}}"
 	tagMessage string,
 ) (string, error) {
-	cmd := []string{"nsv", "tag"}
+	cmd := []string{"tag"}
 	if commitMessage != "" {
 		cmd = append(cmd, "--commit-message", commitMessage)
 	}
@@ -215,7 +215,7 @@ func (n *Nsv) Tag(
 	return configureGPG(n.Base, gpgPrivateKey, gpgPassphrase).
 		WithDirectory("/src", n.Src).
 		WithWorkdir("/src").
-		WithExec(cmd).
+		WithExec(cmd, dagger.ContainerWithExecOpts{UseEntrypoint: true}).
 		Stdout(ctx)
 }
 
@@ -266,7 +266,7 @@ func (n *Nsv) Patch(
 	// +optional
 	show bool,
 ) (string, error) {
-	cmd := []string{"nsv", "patch"}
+	cmd := []string{"patch"}
 	if commitMessage != "" {
 		cmd = append(cmd, "--commit-message", commitMessage)
 	}
@@ -280,7 +280,7 @@ func (n *Nsv) Patch(
 	return configureGPG(n.Base, gpgPrivateKey, gpgPassphrase).
 		WithDirectory("/src", n.Src).
 		WithWorkdir("/src").
-		WithExec(cmd).
+		WithExec(cmd, dagger.ContainerWithExecOpts{UseEntrypoint: true}).
 		Stdout(ctx)
 }
 
