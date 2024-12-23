@@ -64,7 +64,8 @@ func New(
 		base = base.WithEnvVariable("NO_LOG", "true")
 	}
 
-	base = base.WithEnvVariable("LOG_LEVEL", string(logLevel))
+	base = base.WithEnvVariable("LOG_LEVEL", string(logLevel)).
+		WithEnvVariable("TINI_SUBREAPER", "1")
 	return &Nsv{Base: base, Src: src}, nil
 }
 
