@@ -21,7 +21,10 @@ import (
 	"dagger/nsv/internal/dagger"
 )
 
-const NsvBaseImage = "ghcr.io/purpleclay/nsv:v0.10.2"
+const (
+	NsvBaseImage = "ghcr.io/purpleclay/nsv:v0.11.0"
+	WorkDir      = "/src"
+)
 
 // Supported log levels
 type LogLevel string
@@ -39,10 +42,6 @@ type Nsv struct {
 	// a custom base image containing an installation of nsv
 	// +private
 	Base *dagger.Container
-
-	// a path to a directory containing the projects source code
-	// +private
-	Src *dagger.Directory
 }
 
 // Initializes the NSV dagger module
@@ -51,6 +50,9 @@ func New(
 	// a path to a directory containing the projects source code
 	// +required
 	src *dagger.Directory,
+	// a path to a dotenv file that will be loaded at runtime
+	// +optional
+	dotenv *dagger.File,
 	// silence all logging within nsv
 	// +optional
 	noLog bool,
@@ -65,8 +67,15 @@ func New(
 	}
 
 	base = base.WithEnvVariable("LOG_LEVEL", string(logLevel)).
-		WithEnvVariable("TINI_SUBREAPER", "1")
-	return &Nsv{Base: base, Src: src}, nil
+		WithEnvVariable("TINI_SUBREAPER", "1").
+		WithDirectory(WorkDir, src).
+		WithWorkdir(WorkDir)
+
+	if dotenv != nil {
+		base = base.WithFile(".env", dotenv, dagger.ContainerWithFileOpts{Permissions: 0o644})
+	}
+
+	return &Nsv{Base: base}, nil
 }
 
 // Prints the next semantic version based on the commit history of your repository.
@@ -117,8 +126,6 @@ func (n *Nsv) Next(
 	)...)
 
 	return n.Base.
-		WithDirectory("/src", n.Src).
-		WithWorkdir("/src").
 		WithExec(cmd, dagger.ContainerWithExecOpts{UseEntrypoint: true}).
 		Stdout(ctx)
 }
@@ -243,8 +250,6 @@ func (n *Nsv) Tag(
 	)...)
 
 	return configureGPG(n.Base, gpgPrivateKey, gpgPassphrase).
-		WithDirectory("/src", n.Src).
-		WithWorkdir("/src").
 		WithExec(cmd, dagger.ContainerWithExecOpts{UseEntrypoint: true}).
 		Stdout(ctx)
 }
@@ -320,8 +325,6 @@ func (n *Nsv) Patch(
 	)...)
 
 	return configureGPG(n.Base, gpgPrivateKey, gpgPassphrase).
-		WithDirectory("/src", n.Src).
-		WithWorkdir("/src").
 		WithExec(cmd, dagger.ContainerWithExecOpts{UseEntrypoint: true}).
 		Stdout(ctx)
 }
