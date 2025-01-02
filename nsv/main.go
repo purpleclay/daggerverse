@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	NsvBaseImage = "ghcr.io/purpleclay/nsv:bundled-bash"
+	NsvBaseImage = "ghcr.io/purpleclay/nsv:logging"
 	WorkDir      = "/src"
 )
 
