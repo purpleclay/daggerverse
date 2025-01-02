@@ -261,7 +261,7 @@ func (n *Nsv) Patch(
 	ctx context.Context,
 	// a custom message when committing file changes, supports go text templates
 	// +optional
-	// +default="chore: patched files for release {{.Tag}}"
+	// +default="chore: patched files for release {{.Tag}} {{.SkipPipelineTag}}"
 	commitMessage string,
 	// fix a shallow clone of a repository if detected
 	// +optional
