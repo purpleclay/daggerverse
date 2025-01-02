@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	NsvBaseImage = "ghcr.io/purpleclay/nsv:logging-1"
+	NsvBaseImage = "ghcr.io/purpleclay/nsv:logging-2"
 	WorkDir      = "/src"
 )
 
