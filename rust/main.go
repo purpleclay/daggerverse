@@ -58,7 +58,7 @@ func New(
 		WithWorkdir(rustWorkDir).
 		WithoutEntrypoint()
 
-	base = mountCaches(ctx, base)
+	base = mountCaches(base)
 	return &Rust{Base: base, Src: src}, nil
 }
 
@@ -84,7 +84,7 @@ func defaultImage(ctx context.Context) (*dagger.Container, error) {
 		Sync(ctx)
 }
 
-func mountCaches(ctx context.Context, base *dagger.Container) *dagger.Container {
+func mountCaches(base *dagger.Container) *dagger.Container {
 	cargoRegistry := dag.CacheVolume("cargo_registry")
 	cargoGit := dag.CacheVolume("cargo_git")
 
@@ -134,5 +134,17 @@ func (r *Rust) FormatCheck(ctx context.Context) (string, error) {
 	}
 
 	cmd := []string{"cargo", "fmt", "--all", "--", "--check"}
+	return ctr.WithExec(cmd).Stdout(ctx)
+}
+
+// Checks the security of the code in your Rust project using cargo-audit. Fails
+// if any security issues are detected
+func (r *Rust) Audit(ctx context.Context) (string, error) {
+	ctr := r.Base
+	if _, err := ctr.WithExec([]string{"cargo", "audit", "--version"}).Sync(ctx); err != nil {
+		ctr = ctr.WithExec([]string{"cargo", "install", "cargo-audit", "--locked"})
+	}
+
+	cmd := []string{"cargo", "audit"}
 	return ctr.WithExec(cmd).Stdout(ctx)
 }
