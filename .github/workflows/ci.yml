@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: ${{ matrix.module }}
-        uses: dagger/dagger-for-github@v8
+        uses: dagger/dagger-for-github@8.0.0
         with:
           module: github.com/${{ github.repository }}/${{ matrix.module }}/tests@${{ github.ref }}
           call: all-tests
