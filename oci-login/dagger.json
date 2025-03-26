@@ -1,6 +1,7 @@
 {
   "name": "oci-login",
-  "engineVersion": "v0.14.0",
-  "sdk": "go",
-  "source": "."
+  "engineVersion": "v0.17.0",
+  "sdk": {
+    "source": "go"
+  }
 }
