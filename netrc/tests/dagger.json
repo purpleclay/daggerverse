@@ -1,13 +1,13 @@
 {
   "name": "tests",
-  "engineVersion": "v0.14.0",
-  "sdk": "go",
+  "engineVersion": "v0.17.0",
+  "sdk": {
+    "source": "go"
+  },
   "dependencies": [
     {
       "name": "netrc",
-      "source": "..",
-      "pin": ""
+      "source": ".."
     }
-  ],
-  "source": "."
+  ]
 }

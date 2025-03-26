@@ -22,7 +22,7 @@ func (m *Tests) AllTests(ctx context.Context) error {
 }
 
 func (m *Tests) WithLogin(ctx context.Context) error {
-	cfg, err := dag.Netrc(dagger.NetrcOpts{Format: dagger.Compact}).
+	cfg, err := dag.Netrc(dagger.NetrcOpts{Format: dagger.NetrcFormatCompact}).
 		WithLogin("github.com", dag.SetSecret("username", "batman"), dag.SetSecret("password", "gotham")).
 		AsFile().
 		Sync(ctx)
@@ -54,7 +54,7 @@ password arkam`
 		WithNewFile(".netrc", content, dagger.DirectoryWithNewFileOpts{Permissions: 0o600}).
 		File(".netrc")
 
-	_, err := dag.Netrc(dagger.NetrcOpts{Format: dagger.Compact}).
+	_, err := dag.Netrc(dagger.NetrcOpts{Format: dagger.NetrcFormatCompact}).
 		WithFile(cfg).
 		AsFile().
 		Sync(ctx)
@@ -68,7 +68,7 @@ func (m *Tests) WithFileInvalid(ctx context.Context) error {
 		WithNewFile(".netrc", content, dagger.DirectoryWithNewFileOpts{Permissions: 0o600}).
 		File(".netrc")
 
-	_, err := dag.Netrc(dagger.NetrcOpts{Format: dagger.Compact}).
+	_, err := dag.Netrc(dagger.NetrcOpts{Format: dagger.NetrcFormatCompact}).
 		WithFile(cfg).
 		AsFile().
 		Sync(ctx)
