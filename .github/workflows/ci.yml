@@ -1,5 +1,4 @@
 name: ci
-
 on:
   push:
     branches:
@@ -18,14 +17,14 @@ jobs:
           - helm-oci
           - kubeconform
           - netrc
+          - oci-login
           - shellcheck
 
     steps:
       - name: ${{ matrix.module }}
-        uses: dagger/dagger-for-github@v7
+        uses: dagger/dagger-for-github@v8
         with:
-          verb: call
           module: github.com/${{ github.repository }}/${{ matrix.module }}/tests@${{ github.ref }}
-          args: all-tests
+          call: all-tests
           cloud-token: ${{ secrets.DAGGER_CLOUD_TOKEN }}
-          version: 0.14.0
+          version: 0.17.0

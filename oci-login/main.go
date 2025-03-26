@@ -26,6 +26,7 @@ type ContainerAuth struct {
 
 // Contains a base64 encoded credential for authenticating to an Image Registry
 type Auth struct {
+	// +private
 	Auth string `json:"auth"`
 }
 

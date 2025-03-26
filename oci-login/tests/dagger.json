@@ -1,0 +1,13 @@
+{
+  "name": "tests",
+  "engineVersion": "v0.17.0",
+  "sdk": {
+    "source": "go"
+  },
+  "dependencies": [
+    {
+      "name": "oci-login",
+      "source": ".."
+    }
+  ]
+}

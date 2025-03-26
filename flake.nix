@@ -6,8 +6,8 @@
     flake-utils.url = "github:numtide/flake-utils";
 
     dagger = {
-        # Locked to version 0.14.0
-        url = "github:dagger/nix/9852fdddcdcb52841275ffb6a39fa1524d538d5a";
+        # Locked to version 0.17.0
+        url = "github:dagger/nix/126e5c49a7195dbaf3b4f96110e6c640faf09d7e";
         inputs = {
             nixpkgs.follows = "nixpkgs";
         };
